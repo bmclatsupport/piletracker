@@ -1,0 +1,29 @@
+{
+  "name": "Barton Malow Pile Tracker",
+  "short_name": "Pile Tracker",
+  "description": "Offline pile installation and remediation tracking for solar construction.",
+  "start_url": "./PileTracker.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#00263A",
+  "theme_color": "#00263A",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
