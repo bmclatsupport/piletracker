@@ -7,8 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#00263A">
-<meta name="apple-mobile-web-app-title" content="Pile Crew">
-<meta name="application-name" content="Pile Crew">
+<meta name="apple-mobile-web-app-title" content="Pile Tracker">
+<meta name="application-name" content="Pile Tracker">
 <!-- Optional: only used when the file is hosted at a web address, so it can be
      added to an iPad home screen as a proper full-screen app. Harmless otherwise. -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -169,10 +169,12 @@ body.gate-on #gate{display:flex;align-items:center;justify-content:center}
     max-width:calc(100% - 74px)}
   .gpsbar .near{font-size:11px}
 }
-.toast{position:absolute;left:50%;transform:translateX(-50%);bottom:70px;z-index:30;
+/* fixed, not absolute, because it is no longer inside .main — see the markup */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:70px;z-index:70;
   background:var(--bm-blue);color:#fff;padding:10px 16px;border-radius:var(--radius-lg);
   font-size:13px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.35);max-width:88%;
-  text-align:center;opacity:0;transition:opacity .18s;pointer-events:none}
+  text-align:center;opacity:0;transition:opacity .18s;pointer-events:none;
+  border:1px solid rgba(255,255,255,.22)}
 .toast.show{opacity:1}
 .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   flex-direction:column;gap:14px;color:#fff;text-align:center;padding:24px;z-index:8}
@@ -211,6 +213,13 @@ body.home-on .toolbar,body.home-on .main{display:none}
 .home-crew .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--bm-steel);font-weight:700}
 .home-crew .val{font-size:13px;color:var(--bm-text);font-weight:700}
 .home-foot{font-size:11px;color:var(--bm-steel);margin-top:14px;line-height:1.5;text-align:center}
+/* the limited-storage notice: present but not alarming until it is worth being alarmed about */
+.lowstore{display:block;width:100%;text-align:left;margin-top:14px;padding:11px 13px;cursor:pointer;
+  background:rgba(227,82,5,.10);border:1px solid rgba(227,82,5,.45);border-radius:var(--radius-lg);
+  color:var(--bm-blue);font:inherit}
+.lowstore b{display:block;font-size:12.5px;margin-bottom:2px}
+.lowstore span{display:block;font-size:11.5px;color:var(--bm-craftsman);line-height:1.45}
+.lowstore.hot{background:rgba(196,13,60,.12);border-color:rgba(196,13,60,.55)}
 .btn-home{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;
   border-radius:var(--radius-lg);height:38px;width:42px;display:inline-flex;align-items:center;
   justify-content:center;flex:0 0 auto}
@@ -516,11 +525,29 @@ body.crew #btnFilter,body.crew #btnPunch,body.crew #btnLayers,body.crew #btnLege
 body.crew #btnDash,body.crew #btnImport,body.crew #btnBase,body.crew #btnOv{display:none!important}
 /* Menu is the only route to the crew name and to help, so in crew mode it is never hidden —
    including on a tablet, where the buttons it would otherwise duplicate are all gone. */
-body.crew #btnMore{display:inline-flex;order:9;margin-left:auto}
+body.crew #btnMore{display:inline-flex;order:9}
 @media(max-width:820px){
   /* Sync earns its place back on the strip in crew mode. It is the end-of-day export, and the
      one thing a crew must not have to hunt through a menu for at four in the afternoon. */
   body.crew #btnSync{display:inline-flex;order:8}
+}
+/* The row was overflowing and Menu was clipped at the right edge, because the search box is a
+   fixed 104px and `margin-left:auto` on Menu pushed it past the end of a scrolling strip. So:
+   nothing scrolls, the search box is the one thing allowed to give up width, and Menu is the
+   one thing that may never shrink. Menu is how you reach everything else — it is the last
+   button that should be sacrificed, and it was the first. */
+body.crew .toolbar{overflow-x:visible;gap:5px;padding-left:8px;padding-right:8px;flex-wrap:nowrap}
+/* left to right: house, search, Select, Sync, Menu */
+body.crew .search{flex:1 1 40px;min-width:0;order:1}
+body.crew .search input{width:100%;min-width:0}
+body.crew #btnSelect{order:2}
+body.crew .toolbar > button{flex:0 0 auto}
+body.crew .tb{padding:0 10px}
+body.crew .spacer{display:none}
+@media(max-width:420px){
+  /* on the narrowest phones the labels are what has to give, not the buttons */
+  body.crew .tb{padding:0 8px;font-size:12px}
+  body.crew .toolbar{gap:4px}
 }
 </style>
 </head>
@@ -545,7 +572,7 @@ body.crew #btnMore{display:inline-flex;order:9;margin-left:auto}
        Left as null in the master copy. Written by Sync -> Build a standalone tracker.
        A crew page carries only {"fmt":"bm-pile-pack","lockRole":"guest","crewMode":true} and
        waits for a pack, so one hosted page serves every job. -->
-  <script id="bakedProject" type="application/json">{"fmt":"bm-pile-pack","v":1,"app":"2.7","lockRole":"guest","crewMode":true,"piles":[]}</script>
+  <script id="bakedProject" type="application/json">null</script>
   <!-- The app sets body.crew during start-up, but the toolbar is painted before start-up
        finishes, so a crew page would show the coordinator's buttons for a frame and then
        drop them. Read the slot here instead, before anything paints. -->
@@ -618,8 +645,12 @@ body.crew #btnMore{display:inline-flex;order:9;margin-left:auto}
       <p>Import the pile KMZ (and optional CSV) once on this device. Everything after that works with no signal. Data is stored on the device and synced with the other crews at end of day.</p>
       <button class="btn pri" id="btnImport2">Import KMZ / CSV</button>
     </div>
-    <div class="toast" id="toast"></div>
   </div>
+  <!-- The toast sits outside .main because body.home-on hides .main entirely. It lived in
+       there, so every message raised from the home screen — including "could not read that
+       file" — was written to an element that was not on screen, and the app looked as though
+       it had simply ignored the tap. -->
+  <div class="toast" id="toast"></div>
 </div>
 
 <!-- Slide-over panel -->
@@ -648,7 +679,7 @@ body.crew #btnMore{display:inline-flex;order:9;margin-left:auto}
    Single-file, offline-first field app. No external libraries.
    ============================================================ */
 
-const APP_VER = "2.7";
+const APP_VER = "2.9";
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -693,9 +724,21 @@ const S = {
   bounds: null
 };
 
-/* ---------------- IndexedDB ---------------- */
+/* ---------------- IndexedDB ----------------
+
+   Two backends, and which one you get is not a detail. A page at a web address gets IndexedDB,
+   which will hold hundreds of megabytes. The same file opened off a disk does not: Chrome
+   refuses IndexedDB to a file:// page, so the app falls back to localStorage, which stops at
+   about five megabytes.
+
+   Silver Creek needs 2.2 MB before a single pile is recorded and 3.9 MB once the whole region
+   is in. So the fallback works for months and then fails, mid-season, and the failure lands on
+   a save. Nobody should have to find that out by hitting it, which is why the app now says
+   where it is storing things and how much room is left. */
 const DB_NAME = "bm-pile-tracker", DB_VER = 1;
 let _db = null;
+let storeKind = "idb";                 // set to "local" by lsFallback()
+const LS_CAP = 5 * 1024 * 1024;        // the usual localStorage ceiling
 function db() {
   if (_db) return Promise.resolve(_db);
   return new Promise((res, rej) => {
@@ -731,6 +774,105 @@ async function kvDel(k) {
     tx.objectStore("kv").delete(k);
     tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error);
   });
+}
+
+/* ---------------- how much room is left ----------------
+
+   localStorage is billed in UTF-16 code units, so the bytes are twice the characters — worth
+   getting right, because reporting half the real figure would be worse than saying nothing. */
+function lsBytes() {
+  try {
+    let n = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      n += (k.length + (localStorage.getItem(k) || "").length) * 2;
+    }
+    return n;
+  } catch (e) { return null; }
+}
+const fmtMB = b => b == null ? "unknown"
+  : b < 1048576 ? Math.round(b / 1024).toLocaleString() + " KB"
+    : (b / 1048576).toFixed(b < 10485760 ? 2 : 1) + " MB";
+
+async function storageReport() {
+  if (storeKind === "local") {
+    const used = lsBytes();
+    return { kind: "local", used, cap: LS_CAP, pct: used == null ? null : used / LS_CAP, sure: false };
+  }
+  let used = null, cap = null;
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const e = await navigator.storage.estimate();
+      used = e.usage; cap = e.quota;
+    }
+  } catch (e) { }
+  return { kind: "idb", used, cap, pct: (used != null && cap) ? used / cap : null, sure: true };
+}
+const storageLine = r => r.kind === "idb"
+  ? "Full browser storage" + (r.used != null ? " · " + fmtMB(r.used) + " used" : "")
+  : "Limited file storage · " + fmtMB(r.used) + " of about " + fmtMB(r.cap);
+
+/* Said once when a device first shows up on the limited backend with a project on it, and again
+   at each quarter of the way to the ceiling. Not on every launch — a warning nobody can act on
+   twice is just noise. */
+function storageWarning(r) {
+  const pct = r.pct == null ? 0 : Math.round(r.pct * 100);
+  const room = r.cap - (r.used || 0);
+  const perPile = 190;                              // measured: about 0.18 KB per record
+  const piles = Math.max(0, Math.floor(room / perPile));
+  modal("This copy has limited storage", `
+    <div class="readrow" style="border-top:0"><span>Storing data in</span><b>Browser file storage</b></div>
+    <div class="readrow"><span>Used</span><b${pct >= 75 ? ' style="color:var(--bm-red)"' : ''}>${fmtMB(r.used)} of about ${fmtMB(r.cap)} · ${pct}%</b></div>
+    <div class="readrow"><span>Room left</span><b>about ${piles.toLocaleString()} more recorded piles</b></div>
+    <p class="hint" style="margin:10px 0 0">This file was opened from a disk rather than a web address,
+      and a browser gives a page like that a small fixed amount of storage — around five megabytes.
+      The layout alone uses most of it, so a whole region cannot fit here however long you leave it.
+      The number above is the real one: that is how many more piles this copy will hold before a
+      save fails.<br><br>
+      <b>If you are the coordinator</b> and this is where you merge the crews in each evening, open the
+      tracker at its web address instead. Same app, proper storage, no ceiling. Load the project there
+      once with <b>Sync → Restore backup</b>.<br><br>
+      <b>Either way, run Sync → Full backup tonight.</b> Right now this laptop is the only copy.</p>`,
+    [{ t: "Understood", cls: "btn pri", fn: closeModal }]);
+}
+
+/* The save that fails is the one that matters, so this is a modal, not a passing toast. */
+let _fullSaid = false;
+function storageFull() {
+  if (_fullSaid) return;
+  _fullSaid = true;
+  modal("Storage is full", `
+    <p style="margin:0 0 10px;font-size:13px;line-height:1.55">The last change could not be saved.
+      This copy of the tracker has run out of room.</p>
+    <p class="hint" style="margin:0"><b>Export a backup now</b>, before closing anything, and send it to
+      the office. Then open the tracker at its web address and restore that backup there — the hosted
+      copy has no practical limit. Nothing already saved has been lost.</p>`,
+    [{ t: "Export a backup now", cls: "btn pri", fn: () => { closeModal(); exportBackup(); } },
+    { t: "Close", cls: "btn", fn: closeModal }]);
+}
+
+/* Not even quarters. Quarters put the last warning at 75% and then nothing, so the one moment
+   it matters most — nearly out of room, days from failing — passes in silence. The steps get
+   closer together as it fills. */
+const ST_STEPS = [0, 0.5, 0.75, 0.9, 0.97];
+const stepOf = pct => {
+  let i = 0;
+  for (let n = 0; n < ST_STEPS.length; n++) if (pct >= ST_STEPS[n]) i = n;
+  return i;
+};
+async function checkStorage(silent) {
+  let r;
+  try { r = await storageReport(); } catch (e) { return null; }
+  const row = $("#stStore");
+  if (row) row.textContent = storageLine(r);
+  if (r.kind !== "local" || !S.proj) return r;
+  const step = stepOf(r.pct == null ? 0 : r.pct);
+  const seen = S.dev.stWarn == null ? -1 : S.dev.stWarn;
+  if (!silent && step > seen) {
+    S.dev.stWarn = step; saveSettings();
+    setTimeout(() => storageWarning(r), 700);
+  }
+  return r;
 }
 async function tileGet(k) {
   const d = await db();
@@ -1629,6 +1771,32 @@ function niceStep() {
   const m = raw / e; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * e;
 }
 
+/* Where you are standing, drawn as a blue dot inside a ring the size of the fix's accuracy.
+
+   This used to be painted at the very end of draw(), which returns early when the device has
+   no piles on it. So a tablet waiting for the morning pack showed a position in the bar at the
+   bottom and nothing at all on the map. Your own location has nothing to do with whether a
+   project is loaded, so it is drawn either way now. */
+function drawGps() {
+  if (!S.gps) return;
+  const x = sx(lon2wx(S.gps.lon)), y = sy(lat2wy(S.gps.lat));
+  if (S.gps.acc) {
+    const mpp = 156543.03392 * Math.cos(S.gps.lat * Math.PI / 180) / Math.pow(2, zoomLevel());
+    const rp = S.gps.acc / mpp;
+    if (rp > 4) {
+      ctx.fillStyle = "rgba(0,154,222,.16)";
+      ctx.beginPath(); ctx.arc(x, y, rp, 0, 6.2832); ctx.fill();
+      ctx.strokeStyle = "rgba(0,154,222,.55)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y, rp, 0, 6.2832); ctx.stroke();
+    }
+  }
+  /* a white halo under the dot, so it reads on satellite imagery as well as on the dark grid */
+  ctx.fillStyle = "rgba(255,255,255,.9)";
+  ctx.beginPath(); ctx.arc(x, y, 10, 0, 6.2832); ctx.fill();
+  ctx.fillStyle = "#009ADE"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(x, y, 7, 0, 6.2832); ctx.fill(); ctx.stroke();
+}
+
 function draw() {
   _rq = false;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -1641,7 +1809,7 @@ function draw() {
   drawBlockLabels();
   if (S.base === "none" && !S.overlays.some(o => o.on)) drawGrid();
 
-  if (!S.piles.length) { drawScale(); return; }
+  if (!S.piles.length) { drawGps(); drawScale(); return; }
 
   const r = ptRadius();
   const spx = pxSpacing();
@@ -1859,17 +2027,7 @@ function draw() {
     }
   }
 
-  // GPS
-  if (S.gps) {
-    const x = sx(lon2wx(S.gps.lon)), y = sy(lat2wy(S.gps.lat));
-    if (S.gps.acc) {
-      const mpp = 156543.03392 * Math.cos(S.gps.lat * Math.PI / 180) / Math.pow(2, zoomLevel());
-      const rp = S.gps.acc / mpp;
-      if (rp > 4) { ctx.fillStyle = "rgba(0,154,222,.16)"; ctx.beginPath(); ctx.arc(x, y, rp, 0, 6.2832); ctx.fill(); }
-    }
-    ctx.fillStyle = "#009ADE"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.arc(x, y, 7, 0, 6.2832); ctx.fill(); ctx.stroke();
-  }
+  drawGps();
   drawScale();
   $("#hdrSubTxt").textContent = S.proj
     ? `${S.proj.name} · ${shown.toLocaleString()} of ${S.piles.length.toLocaleString()} shown${S.dev.crew ? " · " + S.dev.crew : ""}`
@@ -4209,7 +4367,7 @@ function openBulkCrew(arr) {
     <p class="hint" style="margin:0 0 10px">Stamped <b>${esc(stampLine())}</b>. Change it under <b>Crew</b>.</p>
     <button class="btn" id="uZoom" style="width:100%">Zoom to selection</button>
     <p class="hint">Remediation is recorded one pile at a time. Tap a single pile to flag it.<br>
-      Tap <b>Multi-Select</b> in the toolbar to go back to opening piles one at a time.</p>`;
+      Tap <b>Select</b> in the toolbar to go back to opening piles one at a time.</p>`;
   const apply = patch => {
     const note = $("#uNt").value.trim();
     beginAction(describePatch(patch, arr.length));
@@ -6228,7 +6386,11 @@ function openCrew() {
         S.dev.driver = $("#cDriver").value.trim();
         saveSettings(); updateCrewBtn(); closeModal();
         if (S.cur) openPile(S.cur);
-        toast("Recording as " + stampLine());
+        /* saving all three blank used to toast "Recording as not set", which reads as though
+           something went right. Say the actual consequence instead. */
+        toast(stampLine() === "not set"
+          ? "No crew name set. Piles will record without one — tap Crew to add it"
+          : "Recording as " + stampLine(), 4200);
         requestDraw();
       }
     }]);
@@ -7576,6 +7738,7 @@ async function openSync() {
       <div class="readrow"><span>Recorded on this device</span><b>${recs.toLocaleString()}</b></div>
       <div class="readrow"><span>Installed / flagged</span><b>${done.toLocaleString()} / ${rem.toLocaleString()}</b></div>
       <div class="readrow"><span>Connection</span><b>${navigator.onLine ? "online" : "offline. Everything still works"}</b></div>
+      <div class="readrow"><span>Stored in</span><b id="stStore">checking…</b></div>
 
       <div class="divider"></div>
       <div class="section-title">Send the day in</div>
@@ -7602,6 +7765,7 @@ async function openSync() {
         for whatever is on screen so the map still draws out in the field. The piles themselves never
         need a connection.</p>`,
       [{ t: "Close", cls: "btn", fn: closeModal }]);
+    checkStorage(true);
     $("#sExp").onclick = exportDay;
     $("#sCsv2").onclick = () => exportCSV(false);
     $("#sNewPack").onclick = () => { closeModal(); pickPack(); };
@@ -7619,6 +7783,7 @@ async function openSync() {
     <div class="readrow"><span>Records on this device</span><b>${recs.toLocaleString()}</b></div>
     <div class="readrow"><span>Installed / remediation</span><b>${done.toLocaleString()} / ${rem.toLocaleString()}</b></div>
     <div class="readrow"><span>Connection</span><b>${navigator.onLine ? "online" : "offline. Everything still works"}</b></div>
+    <div class="readrow"><span>Stored in</span><b id="stStore">checking…</b></div>
 
     <div class="divider"></div>
     <div class="section-title">Crew, end of day</div>
@@ -7679,6 +7844,7 @@ async function openSync() {
       so the map still draws in the field. Drone flights are handled per layer under <b>Layers → Drone imagery</b>. Pile data itself never needs a connection.</p>`,
     [{ t: "Close", cls: "btn", fn: closeModal }]);
 
+  checkStorage(true);
   $("#sExp").onclick = exportDay;
   $("#sCsv2").onclick = () => exportCSV(false);
   $("#sPack").onclick = () => gate("packs", "Making a crew pack", exportGuestPack);
@@ -8308,7 +8474,22 @@ $("#btnLegend").onclick = () => S.piles.length ? openLegend() : toast("Load a pr
 $("#btnCrew").onclick = openCrew;
 $("#btnSync").onclick = () => S.proj ? openSync() : toast("Load a project first");
 $("#btnImport").onclick = () => gate("project", "Loading or changing project files", openImport);
-$("#btnImport2").onclick = openImport;
+/* This was the one route into the importer with no permission check on it, so a crew device
+   could build a project out of any design file it happened to have in Downloads — which is
+   exactly what happened on the first phone test. On a crew page the button opens the pack
+   instead, which is the only thing that screen should be offering. */
+$("#btnImport2").onclick = () => crewMode() ? pickPack()
+  : gate("project", "Loading or changing project files", openImport);
+/* and the words on that screen have to match the button */
+function refreshEmptyState() {
+  const h = $("#emptyState");
+  if (!h || !crewMode()) return;
+  const t = h.querySelector("h2"), p = h.querySelector("p"), b = $("#btnImport2");
+  if (t) t.textContent = "Waiting for the day's pack";
+  if (p) p.textContent = "Open the file your coordinator sent you. The whole site lands on this "
+    + "device and everything after that works with no signal.";
+  if (b) b.textContent = "Open the pack";
+}
 $("#btnBase").onclick = openBasemap;
 $("#btnZoomIn").onclick = () => setZoom(zoomLevel() + 1);
 $("#btnZoomOut").onclick = () => setZoom(zoomLevel() - 1);
@@ -8337,20 +8518,63 @@ let tileCountCache = 0;
 /* Opening the pack the coordinator sent is the first thing a crew device ever does and the
    first thing it does most mornings, so it is reachable from the home screen and from the menu
    rather than only from one of them. */
+/* What the file actually is, so a refusal can say something useful.
+
+   Handing this a KMZ produced "Could not read that file" and nothing else — and because the
+   toast was hidden behind the home screen, not even that. A crew reasonably reaches for the
+   design file they already have, so name it and say what to look for instead. */
+function describeWrongFile(name, head) {
+  const n = String(name || "").toLowerCase();
+  const zip = head && head.length > 1 && head[0] === 0x50 && head[1] === 0x4b;   // "PK"
+  if (/\.kmz$/.test(n) || (zip && /\.kmz|\.zip$/.test(n)))
+    return "a KMZ — the map drawing the engineer issues";
+  if (/\.kml$/.test(n)) return "a KML — the map drawing the engineer issues";
+  if (/\.dxf$/.test(n)) return "a DXF — a CAD drawing";
+  if (/\.csv$|\.xlsx?$/.test(n)) return "a spreadsheet of pile locations";
+  if (zip) return "a zip file";
+  return null;
+}
+function wrongFileHelp(name, what) {
+  modal("That is not the day's pack", `
+    <div class="readrow" style="border-top:0"><span>You picked</span><b>${esc(name)}</b></div>
+    ${what ? `<div class="readrow"><span>Which looks like</span><b>${esc(what)}</b></div>` : ""}
+    <p class="hint" style="margin:10px 0 0">Design files build a project from scratch, which is a
+      job for the office. What you want is the pack your coordinator sends out, which has a name
+      ending <b>.pilepack.json</b> and usually starts with the date, like
+      <b>2026-08-25_silver-creek_CREW-PACK.pilepack.json</b>.<br><br>
+      If you have not been sent one, ask your coordinator for the crew pack. Nothing on this
+      device has been changed.</p>`,
+    [{ t: "Try another file", cls: "btn pri", fn: () => { closeModal(); pickPack(); } },
+    { t: "Close", cls: "btn", fn: closeModal }]);
+}
 function pickPack() {
   pickFiles(async fl => {
     const f = fl[0]; if (!f) return;
-    try {
-      const j = JSON.parse(await f.text());
-      if (await openPack(j)) return;
-      if (j.fmt === "bm-pile-backup") {
-        const built = restorePiles(j.piles, j.proj, j.design);
-        await activateProject(built, false);
-        S.ov = j.ov || {}; await kvPut("ov", S.ov); refreshKPI();
-        toast("Backup restored, " + S.piles.length.toLocaleString() + " piles");
-        showHome(false);
-      } else toast("That is a crew sync file, load the project first, then merge it under Sync");
-    } catch (e) { toast("Could not read that file"); }
+    /* read the first bytes before trusting the name — a renamed zip is still a zip */
+    let head = null;
+    try { head = new Uint8Array(await f.slice(0, 4).arrayBuffer()); } catch (e) { }
+    const what = describeWrongFile(f.name, head);
+    if (what) return wrongFileHelp(f.name, what);
+    let j = null;
+    try { j = JSON.parse(await f.text()); }
+    catch (e) { return wrongFileHelp(f.name, describeWrongFile(f.name, head)); }
+    if (await openPack(j)) return;
+    if (j && j.fmt === "bm-pile-backup") {
+      const built = restorePiles(j.piles, j.proj, j.design);
+      await activateProject(built, false);
+      S.ov = j.ov || {}; await kvPut("ov", S.ov); refreshKPI();
+      toast("Backup restored, " + S.piles.length.toLocaleString() + " piles");
+      showHome(false);
+      return;
+    }
+    if (j && j.fmt === "bm-pile-sync")
+      return modal("That is a day's work, not a pack", `
+        <div class="readrow" style="border-top:0"><span>You picked</span><b>${esc(f.name)}</b></div>
+        <div class="readrow"><span>Records in it</span><b>${Object.keys(j.records || {}).length.toLocaleString()}</b></div>
+        <p class="hint" style="margin:10px 0 0">This is a crew's export. Merging these together is the
+          coordinator's job, under <b>Sync</b> on their copy. The file that sets a tablet up is the
+          <b>crew pack</b>.</p>`, [{ t: "Close", cls: "btn pri", fn: closeModal }]);
+    wrongFileHelp(f.name, null);
   });
 }
 function renderHome() {
@@ -8456,12 +8680,27 @@ function renderHome() {
       <span class="lbl">Driver</span><span class="val">${esc(S.dev.driver || "not set")}</span>
       <button class="btn" id="hCrew" style="height:38px;margin-left:auto;font-size:12px">Change</button>
     </div>
+    ${storeKind === "local" ? `<button class="lowstore" id="hStore">
+      <b>This copy has limited storage</b>
+      <span id="hStoreTxt">Opened from a disk, so the browser allows it about 5 MB. Tap to see how much is left.</span>
+    </button>` : ""}
     <p class="home-foot">
       ${navigator.onLine ? "Online" : "Offline. Recording works exactly the same"} ·
       <span id="homeTiles">${tileCountCache.toLocaleString()}</span> map tiles saved on this device ·
       ${pending ? pending.toLocaleString() + " field records" : "no field records yet"}<br>
       Barton Malow · Pile Installation Tracker ${APP_VER}
     </p>`;
+  if ($("#hStore")) {
+    $("#hStore").onclick = async () => { const r = await storageReport(); storageWarning(r); };
+    storageReport().then(r => {
+      const t = $("#hStoreTxt");
+      if (!t) return;
+      const pct = r.pct == null ? null : Math.round(r.pct * 100);
+      t.textContent = fmtMB(r.used) + " of about " + fmtMB(r.cap) + " used"
+        + (pct == null ? "" : " · " + pct + "%") + ". Tap for what to do about it.";
+      if (pct != null && pct >= 75) $("#hStore").classList.add("hot");
+    }).catch(() => { });
+  }
   const on = (id, fn) => { const n = $(id); if (n) n.onclick = fn; };
   on("#hMap", () => showHome(false));
   on("#hPunch", () => { showHome(false); openPunch(); });
@@ -8727,8 +8966,9 @@ addEventListener("keydown", e => {
    swapped, deletes included: a delete that quietly did nothing here would let "Start over"
    look like it worked and then bring the old project back on the next launch. */
 function lsFallback() {
+  storeKind = "local";
   kvGet = async k => { try { const v = localStorage.getItem("bmpt:" + k); return v ? JSON.parse(v) : undefined; } catch (e) { return undefined; } };
-  kvPut = async (k, v) => { try { localStorage.setItem("bmpt:" + k, JSON.stringify(v)); } catch (e) { toast("Storage full. Export a backup now"); } };
+  kvPut = async (k, v) => { try { localStorage.setItem("bmpt:" + k, JSON.stringify(v)); } catch (e) { storageFull(); } };
   kvDel = async k => { try { localStorage.removeItem("bmpt:" + k); } catch (e) { } };
   tileGet = async () => null; tilePut = () => { }; tileCount = async () => 0;
   tileClear = async () => { }; tileDelPrefix = async () => { }; tileEach = async () => { };
@@ -8767,6 +9007,13 @@ async function init() {
   }
   /* set before anything renders, so no coordinator tool ever flashes up on a crew page */
   document.body.classList.toggle("crew", crewMode());
+  refreshEmptyState();
+  if (crewMode()) {
+    /* "Multi-Select" is the widest label on the strip by some way, and on a phone the strip has
+       to fit. "Select" says the same thing in half the room. */
+    const sel = $("#btnSelect"); if (sel) sel.textContent = "Select";
+    const sy = $("#btnSync"); if (sy) sy.textContent = "Send";
+  }
   $("#btnOv").classList.toggle("on", S.overlays.some(o => o.on));
   updateCrewBtn();
   updateSelBar();
@@ -8788,6 +9035,9 @@ async function init() {
     if (baked.lockRole) { S.role = baked.lockRole; saveSettings(); }
     fitBounds(S.proj.bounds, 50);
     updateRoleBadge();
+    /* a standalone file opened off a disk is the case most likely to be on the small backend,
+       and it takes this path rather than the one below, so check here too */
+    checkStorage(false);
     if (!S.dev.crew) setTimeout(openCrew, 600);
     if (S.dev.gpsOn) setTimeout(() => toggleGps(true), 400);
     setInterval(saveSettings, 15000);
@@ -8820,6 +9070,8 @@ async function init() {
      then — an unclaimed device has nothing to sign into and has to stay usable */
   openGate(false);
   updateRoleBadge();
+  /* after the gate, so the warning is not stacked under the sign-in cover */
+  checkStorage(false);
   if (S.dev.gpsOn && S.proj) setTimeout(() => toggleGps(true), 400);   // was on last time
   setInterval(saveSettings, 15000);
   addEventListener("beforeunload", saveSettings);
