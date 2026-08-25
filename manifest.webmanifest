@@ -1,13 +1,13 @@
 {
-  "name": "Barton Malow Pile Tracker",
-  "short_name": "Pile Tracker",
-  "description": "Offline pile installation and remediation tracking for solar construction.",
+  "name": "Barton Malow Pile Crew",
+  "short_name": "Pile Crew",
+  "description": "Record pile installations and remediation in the field. Works with no signal.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#00263A",
+  "background_color": "#E35205",
   "theme_color": "#00263A",
   "icons": [
     {

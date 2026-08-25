@@ -1,11 +1,12 @@
-/* Optional service worker for Pile Tracker.
-   Only needed if you HOST PileTracker.html on a web address (SharePoint page, intranet, any https URL)
-   and want it to open offline after the first visit. Put this file next to PileTracker.html.
-   If crews just open the HTML file straight off the device, this file is not needed at all. */
+/* Service worker for the crew page.
+   Caches the app shell so the page opens with no signal after the first visit.
+   Pile data and map tiles are stored by the app itself in IndexedDB — not here.
 
-const CACHE = "bm-pile-tracker-v2";
-const SHELL = ["./", "./PileTracker.html", "./index.html",
-  "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
+   The cache name is deliberately different from the coordinator app's. Both pages sit on the
+   same origin, so a shared name would have one build serving the other's shell. */
+const CACHE = "bm-pile-crew-v1";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest",
+  "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil((async () => {
@@ -27,26 +28,22 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-
-  // Map tiles are cached by the app itself in IndexedDB — let them pass through.
-  if (/arcgisonline|openstreetmap/.test(url.hostname)) return;
-
-  // App shell: serve from cache first so it opens with no signal.
-  if (url.origin === location.origin) {
-    e.respondWith((async () => {
-      const c = await caches.open(CACHE);
-      const hit = await c.match(req, { ignoreSearch: true });
-      if (hit) {
-        fetch(req).then(r => { if (r && r.ok) c.put(req, r.clone()); }).catch(() => { });
-        return hit;
-      }
-      try {
-        const r = await fetch(req);
-        if (r && r.ok) c.put(req, r.clone());
-        return r;
-      } catch (err) {
-        return (await c.match("./PileTracker.html")) || new Response("Offline", { status: 503 });
-      }
-    })());
-  }
+  // map tiles and the DroneDeploy API are handled by the app; let them pass through
+  if (/arcgisonline|openstreetmap|dronedeploy/.test(url.hostname)) return;
+  if (url.origin !== location.origin) return;
+  e.respondWith((async () => {
+    const c = await caches.open(CACHE);
+    const hit = await c.match(req, { ignoreSearch: true });
+    if (hit) {
+      fetch(req).then(r => { if (r && r.ok) c.put(req, r.clone()); }).catch(() => { });
+      return hit;                                  // instant, works offline
+    }
+    try {
+      const r = await fetch(req);
+      if (r && r.ok) c.put(req, r.clone());
+      return r;
+    } catch (err) {
+      return (await c.match("./index.html")) || new Response("Offline", { status: 503 });
+    }
+  })());
 });

@@ -7,8 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#00263A">
-<meta name="apple-mobile-web-app-title" content="Pile Tracker">
-<meta name="application-name" content="Pile Tracker">
+<meta name="apple-mobile-web-app-title" content="Pile Crew">
+<meta name="application-name" content="Pile Crew">
 <!-- Optional: only used when the file is hosted at a web address, so it can be
      added to an iPad home screen as a proper full-screen app. Harmless otherwise. -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -68,6 +68,34 @@ button{cursor:pointer}
 .tb.on{background:var(--bm-orange);border-color:var(--bm-orange)}
 .tb.pri{background:var(--bm-orange);border-color:var(--bm-orange)}
 #btnMore{display:none}
+/* the first screen — a full cover, so nothing behind it can be tapped by accident */
+#gate{display:none;position:fixed;inset:0;z-index:60;background:var(--bm-blue);
+  overflow-y:auto;padding:24px 18px calc(24px + env(safe-area-inset-bottom));
+  padding-top:calc(24px + env(safe-area-inset-top))}
+body.gate-on #gate{display:flex;align-items:center;justify-content:center}
+.gatebox{width:100%;max-width:420px}
+.gatelogo{font-family:var(--font-sub);font-weight:700;font-size:12px;letter-spacing:.14em;color:#fff;opacity:.75}
+.gatetitle{font-family:var(--font-sub);font-size:22px;color:#fff;margin:6px 0 0;line-height:1.2}
+.gatesub{color:var(--bm-rebar);font-size:13px;margin:16px 0 14px}
+.gatebtn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;
+  min-height:66px;padding:12px 16px;margin-bottom:10px;border-radius:var(--radius-lg);
+  border:1px solid rgba(255,255,255,.35);background:transparent;text-align:left}
+.gatebtn b{font-family:var(--font-sub);font-size:17px;color:#fff}
+.gatebtn span{font-size:12px;color:var(--bm-rebar)}
+.gatebtn.pri{background:var(--bm-orange);border-color:var(--bm-orange)}
+.gatebtn.pri span{color:rgba(255,255,255,.9)}
+.gatecode{margin:6px 0 0}
+.gatecode label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+  font-weight:700;color:var(--bm-rebar);margin:0 0 6px}
+.gatecode input{width:100%;height:52px;font-size:18px;padding:0 14px;margin:0 0 10px;
+  border-radius:var(--radius-lg);border:1px solid rgba(255,255,255,.35);
+  background:rgba(255,255,255,.08);color:#fff}
+.gatenote{font-size:11px;color:var(--bm-rebar);line-height:1.5;margin:12px 0 0}
+#gErr{color:var(--bm-yellow);min-height:16px;margin:2px 0 0}
+.roletag{margin-left:7px;padding:2px 7px;border-radius:9px;font-size:10px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;background:rgba(255,255,255,.18);color:#fff}
+.roletag.coordinator{background:var(--bm-chart-blue)}
+.roletag.admin{background:var(--bm-orange)}
 .tb svg{width:16px;height:16px;fill:currentColor}
 .search{position:relative;flex:0 0 auto}
 .search input{height:38px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);
@@ -261,6 +289,20 @@ body.home-on .toolbar,body.home-on .main{display:none}
   background:#fff;color:var(--bm-blue);font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:6px}
 .wkchip small{font-weight:400;color:var(--bm-steel);font-size:11px}
 .wkchip.done{border-color:var(--bm-green);background:#F2F8EC}
+/* one question at a time */
+.stephd{margin:0 0 14px}
+.stepid{display:flex;align-items:center;gap:8px;min-width:0}
+.stepid b{font-family:var(--font-sub);font-size:19px;color:var(--bm-blue)}
+.stepid span{font-size:11px;color:var(--bm-steel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stepid .wklink{margin-left:auto;flex:0 0 auto}
+.stepdots{display:flex;gap:5px;margin:9px 0 0}
+.stepdots i{flex:1 1 0;height:4px;border-radius:2px;background:var(--bm-rebar-20)}
+.stepdots i.past{background:var(--bm-green)}
+.stepdots i.on{background:var(--bm-orange)}
+.stepdone{font-size:11px;color:var(--bm-steel);margin-top:7px}
+.stepq{font-family:var(--font-sub);font-size:17px;color:var(--bm-blue);margin:0 0 11px}
+.steprec{border:1px solid var(--bm-border);border-radius:var(--radius-lg);padding:4px 11px}
+@media(max-width:760px){ .stepq{font-size:18px} .bigbtn{height:62px} }
 .lyx{flex:0 0 auto;height:34px;padding:0 12px;border-radius:var(--radius);border:1px solid #E3B4C0;
   background:#FDF2F4;color:#8B0D2A;font-weight:700;font-size:12px}
 .btn{height:44px;padding:0 16px;border-radius:var(--radius-lg);border:1px solid var(--bm-border);
@@ -405,7 +447,12 @@ code{background:var(--bm-rebar-20);padding:1px 5px;border-radius:2px;font-size:1
      tablet and every shortcut still works. */
   .toolbar{mask-image:none;-webkit-mask-image:none;overflow:visible}
   #btnFilter,#btnPunch,#btnLayers,#btnLegend,#btnDash,#btnSync,#btnImport,#btnCrew{display:none}
-  #btnMore{order:9;margin-left:auto}
+  /* Menu has to be turned back on explicitly. #btnMore is display:none by default because on a
+     tablet every button is already on the strip and a menu would be a second way to the same
+     places — but the rule below it only set the order, so Menu stayed hidden on a phone too.
+     That left a phone with the house, the search box and Multi-Select and no route to anything
+     else, which is exactly the "there is no legend tool on the phone" report. */
+  #btnMore{display:inline-flex;order:9;margin-left:auto}
   #btnSelect{padding:0 11px}
   /* and the map controls were half the height of the screen */
   .hudbtn{width:40px;height:40px;font-size:18px}
@@ -459,6 +506,22 @@ code{background:var(--bm-rebar-20);padding:1px 5px;border-radius:2px;font-size:1
   .tb{height:36px}
   .panel{height:96%}
 }
+
+/* ---------------- crew mode ----------------
+   The coordinator's tools are not dimmed here, they are gone. At every screen size, not just
+   on a phone: a crew tablet propped on a dash has the same job as a crew phone. What is left
+   is the search box, multi-select, the day's export, the crew name and Menu — and on the map,
+   the compass, zoom and your own location. */
+body.crew #btnFilter,body.crew #btnPunch,body.crew #btnLayers,body.crew #btnLegend,
+body.crew #btnDash,body.crew #btnImport,body.crew #btnBase,body.crew #btnOv{display:none!important}
+/* Menu is the only route to the crew name and to help, so in crew mode it is never hidden —
+   including on a tablet, where the buttons it would otherwise duplicate are all gone. */
+body.crew #btnMore{display:inline-flex;order:9;margin-left:auto}
+@media(max-width:820px){
+  /* Sync earns its place back on the strip in crew mode. It is the end-of-day export, and the
+     one thing a crew must not have to hunt through a menu for at four in the afternoon. */
+  body.crew #btnSync{display:inline-flex;order:8}
+}
 </style>
 </head>
 <body>
@@ -478,6 +541,21 @@ code{background:var(--bm-rebar-20);padding:1px 5px;border-radius:2px;font-size:1
     </div>
   </header>
 
+  <!-- A standalone build drops one project in here, so the file needs nothing but itself.
+       Left as null in the master copy. Written by Sync -> Build a standalone tracker.
+       A crew page carries only {"fmt":"bm-pile-pack","lockRole":"guest","crewMode":true} and
+       waits for a pack, so one hosted page serves every job. -->
+  <script id="bakedProject" type="application/json">{"fmt":"bm-pile-pack","v":1,"app":"2.7","lockRole":"guest","crewMode":true,"piles":[]}</script>
+  <!-- The app sets body.crew during start-up, but the toolbar is painted before start-up
+       finishes, so a crew page would show the coordinator's buttons for a frame and then
+       drop them. Read the slot here instead, before anything paints. -->
+  <script id="crewClass" type="text/javascript">
+    try {
+      var _bk = JSON.parse(document.getElementById("bakedProject").textContent || "null");
+      if (_bk && _bk.crewMode && _bk.lockRole === "guest") document.body.classList.add("crew");
+    } catch (e) { }
+  </script>
+  <div id="gate"></div>
   <section id="home"><div class="home-wrap" id="homeBody"></div></section>
 
   <nav class="toolbar">
@@ -492,7 +570,7 @@ code{background:var(--bm-rebar-20);padding:1px 5px;border-radius:2px;font-size:1
     <button class="tb" id="btnDash">Progress</button>
     <button class="tb" id="btnSync">Sync</button>
     <button class="tb" id="btnImport">Data</button>
-    <button class="tb" id="btnCrew">Crew</button>
+    <button class="tb" id="btnCrew">Crew<span class="roletag" id="roleTag">Guest</span></button>
     <button class="tb" id="btnMore" aria-label="Menu">Menu ▾</button>
   </nav>
 
@@ -506,12 +584,12 @@ code{background:var(--bm-rebar-20);padding:1px 5px;border-radius:2px;font-size:1
       <button class="clr" id="selClear" title="Clear selection">&times;</button>
     </div>
     <div class="gpsbar" id="gpsBar">
-      <span class="acc" id="gpsAcc"><i></i>—</span>
+      <span class="acc" id="gpsAcc"><i></i></span>
       <span class="near" id="gpsNear">Locating…</span>
       <button class="fol" id="gpsFollow">Follow</button>
     </div>
     <div class="attrib" id="attrib"></div>
-    <div class="scalebar" id="scalebar">—</div>
+    <div class="scalebar" id="scalebar"></div>
     <div class="maphud">
       <button class="hudbtn compass" id="compass" title="North is up on the map">
         <svg viewBox="0 0 40 40">
@@ -526,7 +604,7 @@ code{background:var(--bm-rebar-20);padding:1px 5px;border-radius:2px;font-size:1
         </svg>
       </button>
       <button class="hudbtn" id="btnZoomIn" title="Zoom in">+</button>
-      <button class="hudbtn" id="btnZoomOut" title="Zoom out">–</button>
+      <button class="hudbtn" id="btnZoomOut" title="Zoom out">−</button>
       <button class="hudbtn" id="btnGps" title="My location"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm8.94 3a8.99 8.99 0 00-7.94-7.94V1h-2v2.06A8.99 8.99 0 003.06 11H1v2h2.06A8.99 8.99 0 0011 20.94V23h2v-2.06A8.99 8.99 0 0020.94 13H23v-2h-2.06zM12 19a7 7 0 110-14 7 7 0 010 14z"/></svg></button>
       <button class="hudbtn" id="btnNear" title="Nearest pile to me" style="display:none"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7zm0 9.5A2.5 2.5 0 1112 6.5a2.5 2.5 0 010 5z"/></svg></button>
       <button class="hudbtn" id="btnBase" title="Basemap"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 7.9L4.2 6 12 2.1 19.8 6 12 9.9zM2 12l10 5 10-5-1.8-.9L12 15.2 3.8 11.1 2 12zm0 5l10 5 10-5-1.8-.9L12 20.2 3.8 16.1 2 17z"/></svg></button>
@@ -537,7 +615,7 @@ code{background:var(--bm-rebar-20);padding:1px 5px;border-radius:2px;font-size:1
     </div>
     <div class="empty" id="emptyState">
       <h2>Load a project to begin</h2>
-      <p>Import the pile KMZ (and optional CSV) once on this device. Everything after that works with no signal — data is stored on the device and synced with the other crews at end of day.</p>
+      <p>Import the pile KMZ (and optional CSV) once on this device. Everything after that works with no signal. Data is stored on the device and synced with the other crews at end of day.</p>
       <button class="btn pri" id="btnImport2">Import KMZ / CSV</button>
     </div>
     <div class="toast" id="toast"></div>
@@ -555,7 +633,7 @@ code{background:var(--bm-rebar-20);padding:1px 5px;border-radius:2px;font-size:1
 <!-- Modal -->
 <div class="scrim" id="scrim">
   <div class="modal">
-    <div class="modal-head"><h3 id="modalTitle">—</h3><button class="xbtn" id="modalClose">&times;</button></div>
+    <div class="modal-head"><h3 id="modalTitle"></h3><button class="xbtn" id="modalClose">&times;</button></div>
     <div class="modal-body" id="modalBody"></div>
     <div class="modal-foot" id="modalFoot"></div>
   </div>
@@ -570,13 +648,13 @@ code{background:var(--bm-rebar-20);padding:1px 5px;border-radius:2px;font-size:1
    Single-file, offline-first field app. No external libraries.
    ============================================================ */
 
-const APP_VER = "2.0";
+const APP_VER = "2.7";
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const nowTs = () => Date.now();
-const fmtDate = t => !t ? "—" : new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const fmtDate = t => !t ? "not recorded" : new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const pad = n => String(n).padStart(2, "0");
 const dayStamp = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
@@ -606,6 +684,8 @@ const S = {
   selOp: "add",        // whether a drag adds to or removes from the selection
   selShape: "box",     // box drag or freehand lasso
   dev: { id: "", name: "", crew: "", driver: "" },   // stamped on every pile this device records
+  role: "guest",       // which tools this device offers. See the Roles section
+  auth: {},            // salt + one-way hashes of the passcodes, this device only
   base: "esri",
   overlays: [],        // drone / survey imagery layers
   gps: null,
@@ -703,7 +783,7 @@ function saveOv() {
 }
 function saveSettings() {
   kvPut("settings", {
-    dev: S.dev, base: S.base, filt: S.filt, view: S.view, walk: S.walk,
+    dev: S.dev, role: S.role, auth: S.auth, base: S.base, filt: S.filt, view: S.view, walk: S.walk,
     overlays: S.overlays, selShape: S.selShape, colorBy: S.colorBy, showBlockNames: S.showBlockNames
   }).catch(() => { });
 }
@@ -1458,7 +1538,7 @@ function drawBlockLabels() {
   const placed = [];
   for (const c of cands) {
     const b = c.b, x = c.x, y = c.y, sel = c.sel;
-    const txt = b.name || "–";
+    const txt = b.name || "?";
     const fs = clamp(Math.min(c.w, c.hgt) * 0.30, 14, 34);
     ctx.font = "700 " + Math.round(fs) + "px Arial";
     const tw = ctx.measureText(txt).width;
@@ -1817,7 +1897,7 @@ function onOrient(e) {
   if (h == null) return;
   if (!_devSeen) {
     _devSeen = true;
-    toast("Compass on — hold the tablet so the grey needle points up and the map lines up with the ground", 4200);
+    toast("Compass on. Hold the tablet so the grey needle points up and the map lines up with the ground", 4200);
   }
   const now = Date.now();
   const moved = devHeading == null || Math.abs(((h - devHeading + 540) % 360) - 180) > 2;
@@ -1832,7 +1912,7 @@ async function toggleDevCompass() {
     devOn = false; devHeading = null;
     $("#compass").classList.remove("on");
     requestDraw();
-    return toast("Device compass off — north is still up on the map");
+    return toast("Device compass off. North is still up on the map");
   }
   const DOE = typeof DeviceOrientationEvent === "function" ? DeviceOrientationEvent : null;
   if (!DOE) return toast("This device has no compass. North is up on the map.");
@@ -1852,7 +1932,7 @@ async function toggleDevCompass() {
   setTimeout(() => {
     if (devOn && !_devSeen) {
       toggleDevCompass();
-      toast("No compass reading from this device — north is still up on the map");
+      toast("No compass reading from this device. North is still up on the map");
     }
   }, 2600);
 }
@@ -3498,7 +3578,11 @@ const mq = q => (typeof matchMedia === "function" ? matchMedia(q) : { matches: f
 const isPhone = () => mq("(max-width:760px)").matches;
 const isStandalone = () => !!(navigator.standalone || mq("(display-mode: standalone)").matches);
 function openPanel(title) { $("#panelTitle").textContent = title; $("#panel").classList.add("open"); }
+/* declared here rather than beside flushNote, because closePanel runs during start-up and a
+   let further down the file would still be in its dead zone at that point */
+let noteFor = null;
 function closePanel() {
+  flushNote(); noteFor = null;
   $("#panel").classList.remove("open");
   panelRefresh = null;
   if (S.blockMode) { S.blockMode = false; S.hiRing = null; requestDraw(); }
@@ -3618,7 +3702,7 @@ function walkAdvance(k, quick) {
   const sides = [w.turn, -w.turn].map(s => ({ s, q: stepRow(p, w.brg, s) })).filter(o => o.q);
   const pick = sides.find(o => !recorded(o.q)) || sides[0];
   if (pick) { crossRow(pick.q, pick.s); return toast("Next row · now heading " + brgName(w.brg)); }
-  toast("End of the run — nothing further ahead");
+  toast("End of the run. Nothing further ahead");
   openPile(k);
 }
 
@@ -3657,7 +3741,7 @@ function walkStrip(p) {
       ${opts.map(btn).join("")}
       <button class="wklink" id="wAxis" style="margin:2px 0 0;padding:6px 0">The rows run the other way ⟳</button>
       ${ROW_OK ? "" : `<p class="hint" style="margin:6px 0 0">This layout does not read as clean rows, so
-        these two directions are a best guess from the pile spacing — check the distance looks right.</p>`}
+        these two directions are a best guess from the pile spacing. Check the distance looks right.</p>`}
     </div>`;
   }
   const nx = stepAlong(p, w.brg, true);
@@ -3670,7 +3754,7 @@ function walkStrip(p) {
       <span class="wkarrow" style="transform:rotate(${w.brg.toFixed(1)}deg)">↑</span>
       ${nx ? `<span class="wknm"><b>Next · ${esc(nx.id)}</b><small>${ftOf(gapM(p, nx))} ${brgLabel(w.brg)}${nx.block ? " · block " + esc(nx.block) : ""}</small></span>`
       : nr ? `<span class="wknm"><b>End of the row</b><small>Next tap steps across to ${esc(nr.id)} and turns you round</small></span>`
-        : `<span class="wknm"><b>End of the run</b><small>${op ? "No row alongside — nothing more within reach"
+        : `<span class="wknm"><b>End of the run</b><small>${op ? "No row alongside. Nothing more within reach"
           : "Every pile within reach has been recorded"}</small></span>`}
     </div>
     ${op ? `<button class="btn wide" id="wOpen" style="width:100%;margin-bottom:8px">Jump to the nearest
@@ -3682,7 +3766,7 @@ function walkStrip(p) {
     ${(() => {
       const bs = besideMe(p, w.brg);
       if (!bs.length) return "";
-      return `<div class="walksub">also within reach — the walk steps past these</div>
+      return `<div class="walksub">also within reach, not where the walk goes next</div>
         <div class="wkchips">${bs.map(q => `<button class="wkchip${recorded(q) ? " done" : ""}"
           data-wk="${esc(q.k)}">${esc(q.id)} <small>${ftOf(gapM(p, q))}</small></button>`).join("")}</div>`;
     })()}
@@ -3713,7 +3797,7 @@ function walkWire(k, p, saveText) {
   $("#panelBody").querySelectorAll("[data-wb]").forEach(n => n.onclick = () => {
     w.on = true; w.brg = +n.dataset.wb; saveSettings();
     openPile(k); requestDraw();
-    toast("Walking " + brgName(w.brg) + " — the big button now moves you along the row");
+    toast("Walking " + brgName(w.brg) + ". The big button now moves you along the row");
   });
   const w0 = $("#wOpen0");
   if (w0) w0.onclick = () => { walkPick = true; openPile(k); };
@@ -3758,9 +3842,184 @@ function walkWire(k, p, saveText) {
   };
 }
 
-function openPile(k) {
+/* ============================================================
+   Recording a pile, one question at a time
+
+   Everything a crew needs on a pile fits on a tablet at once, and on a phone the same panel
+   is a screenful you have to scroll through while standing over the hole. So on a phone it
+   is asked as a short series instead: is it in, is anything wrong with it, anything to say
+   about it, and on to the next one.
+
+   Three things this must not break. Each answer is written the moment it is tapped, exactly
+   as the single panel does — walk away at any point and what you answered is recorded, so the
+   steps are only a way of asking, never a form to complete. Somebody inspecting for
+   remediation must be able to flag a pile without claiming it is installed, which is the one
+   thing that would cross the two teams' records, so there is a way past the first question
+   that leaves the install field alone. And the fast one-tap path a driving crew uses is
+   walking a row, which is left exactly as it was.
+   ============================================================ */
+let pileStep = 1, pileStepK = null, pileStepAll = false;
+const usePileSteps = () => isPhone() && !S.walk.on && !pileStepAll;
+
+/* how far through, and what has been answered so far */
+function stepHead(p, k, n) {
+  const o = S.ov[k] || {};
+  const st = statusOf(k);
+  const done = [
+    o.tsI ? (o.st ? "Installed" : "Not installed") : null,
+    o.tsR ? (o.rm ? (o.rt || "flagged") + (o.rf ? " · done" : "") : "No issues") : null,
+    (o.nt || "").trim() ? "Note added" : null
+  ].filter(Boolean);
+  return `<div class="stephd">
+    <div class="stepid">
+      <span class="swatch" style="width:20px;height:20px;background:${esc(p.color)};border-color:${ST[st].ring};border-width:3px"></span>
+      <b>${esc(p.id)}</b>
+      <span>${esc(p.type)}${p.block && p.block !== "Unassigned" ? " · block " + esc(p.block) : ""}</span>
+      <button class="wklink" id="stAll">Show all</button>
+    </div>
+    <div class="stepdots">${[1, 2, 3, 4].map(i =>
+    `<i class="${i === n ? "on" : i < n ? "past" : ""}"></i>`).join("")}</div>
+    ${done.length ? `<div class="stepdone">${done.map(esc).join(" · ")}</div>` : ""}
+  </div>`;
+}
+
+/* A note typed into the box is only written on blur, and replacing the panel's contents does
+   not reliably blur anything. So before the panel moves to another pile, commit whatever is
+   sitting in the box to the pile it belongs to. Losing a sentence somebody stood in a field
+   to type is not an acceptable way to save a line of code. */
+function flushNote() {
+  const box = $("#fNt");
+  if (!box || !noteFor || !S.idx.has(noteFor)) return;
+  const v = String(box.value == null ? "" : box.value).trim();
+  if (v !== ((S.ov[noteFor] || {}).nt || "")) setPile(noteFor, { nt: v });
+}
+
+function openPileSteps(k) {
   const p = pileOf(k); if (!p) return;
-  panelRefresh = () => { if (S.cur === k) openPile(k); };
+  if (pileStepK !== k) { flushNote(); pileStepK = k; pileStep = 1; }
+  panelRefresh = () => { if (S.cur === k) openPileSteps(k); };
+  S.cur = k; requestDraw();
+  const o = S.ov[k] || {};
+  const n = clamp(pileStep, 1, 4);
+  const go = s => { pileStep = s; openPileSteps(k); };
+  const titles = { 1: "Is it in?", 2: "Anything wrong with it?", 3: "Anything to note?", 4: "Recorded" };
+  openPanel("Pile " + p.id + " · " + n + " of 4");
+
+  let body = stepHead(p, k, n);
+  if (n === 1) {
+    body += `<div class="stepq">${titles[1]}</div>
+      <div class="big">
+        <button class="bigbtn ${o.st ? "gsel" : ""}" id="s1in">Installed</button>
+        <button class="bigbtn ${o.tsI && !o.st ? "rsel" : ""}" id="s1out">Not installed</button>
+      </div>
+      <button class="wklink" id="s1skip" style="display:block;margin:2px auto 0;padding:10px">
+        Only recording an issue. Leave the install alone</button>
+      <p class="hint">Whichever you tap is saved and stamped ${esc(stampLine())} straight away.</p>`;
+  } else if (n === 2) {
+    body += `<div class="stepq">${titles[2]}</div>
+      <div class="big" style="grid-template-columns:1fr 1fr">
+        ${REM_TYPES.map(t => `<button class="bigbtn ${o.rm && o.rt === t ? "rsel" : ""}" data-srt="${esc(t)}"
+          style="${o.rm && o.rt === t ? "border-color:" + REM_COLOR[t] : ""}">${esc(t)}</button>`).join("")}
+      </div>
+      <div class="big" style="grid-template-columns:${o.rm ? "1fr 1fr" : "1fr"}">
+        <button class="bigbtn ${!o.rm && o.tsR ? "gsel" : ""}" id="s2none">No issues</button>
+        ${o.rm ? `<button class="bigbtn ${o.rf ? "gsel" : ""}" id="s2fix">Remediated</button>` : ""}
+      </div>
+      <p class="hint">Tap the same flag again to take it off.</p>`;
+  } else if (n === 3) {
+    noteFor = k;
+    body += `<div class="stepq">${titles[3]}</div>
+      <div class="field" style="margin:0"><textarea id="fNt" rows="4"
+        placeholder="Anything the next crew needs to know…">${esc(o.nt || "")}</textarea></div>
+      <p class="hint">Leave it empty if there is nothing to say.</p>`;
+  } else {
+    const st = statusOf(k);
+    const nx = S.walk.on ? null : stepNext(p);
+    body += `<div class="stepq">${titles[4]}</div>
+      <div class="steprec">
+        <div class="readrow"><span>Installation</span><b>${o.tsI ? (o.st ? "Installed" : "Not installed") : "not recorded"}</b></div>
+        <div class="readrow"><span>Remediation</span><b>${o.rm ? esc(o.rt || "flagged") + (o.rf ? " · complete" : " · open")
+      : o.tsR ? "no issues" : "not inspected"}</b></div>
+        <div class="readrow"><span>Note</span><b>${(o.nt || "").trim() ? esc(o.nt) : "none"}</b></div>
+        ${o.tsI || o.tsR ? `<div class="readrow"><span>Stamped</span><b>${esc([o.cr, o.dr].filter(Boolean).join(" · ") || "not recorded")}
+          <span style="color:var(--bm-steel);font-weight:400"><br>${fmtDate(o.tsR || o.tsI)}</span></b></div>` : ""}
+      </div>
+      ${nx ? `<button class="btn pri wide" id="s4next" style="width:100%;height:56px;margin-top:12px">
+        Next pile ▸ ${esc(nx.id)} <span style="font-weight:400;opacity:.85">· ${ftOf(gapM(p, nx))}</span></button>`
+      : `<p class="hint" style="margin-top:12px">No neighbouring pile found to move on to. Tap another on the map.</p>`}
+      <button class="btn wide" id="s4again" style="width:100%;margin-top:8px">Change something on this pile</button>`;
+  }
+  $("#panelBody").innerHTML = body;
+  $("#panelBody").scrollTop = 0;
+
+  $("#stAll").onclick = () => { pileStepAll = true; openPile(k); };
+  if (n === 1) {
+    /* recorded, then straight on — a pile that is not in has nothing to remediate, so that
+       answer skips the second question rather than asking something meaningless */
+    $("#s1in").onclick = () => { setPile(k, { st: 1 }); go(2); };
+    $("#s1out").onclick = () => { setPile(k, { st: 0 }); go(3); };
+    $("#s1skip").onclick = () => go(2);
+  } else if (n === 2) {
+    $("#panelBody").querySelectorAll("[data-srt]").forEach(b => b.onclick = () => {
+      const t = b.dataset.srt, oo = S.ov[k] || {};
+      if (oo.rm && oo.rt === t && !oo.rf) setPile(k, { rm: 0, rt: "", rf: 0 });
+      else setPile(k, { rm: 1, rf: 0, rt: t });
+      go(3);
+    });
+    $("#s2none").onclick = () => { setPile(k, { rm: 0, rf: 0, rt: "" }); go(3); };
+    if ($("#s2fix")) $("#s2fix").onclick = () => { setPile(k, { rf: 1 }); go(3); };
+  } else if (n === 3) {
+    const save = () => {
+      const nt = $("#fNt").value.trim();
+      if (nt !== (S.ov[k] || {}).nt) setPile(k, { nt: nt });
+    };
+    $("#fNt").onblur = save;
+    } else {
+    if ($("#s4next")) $("#s4next").onclick = () => {
+      const nx = stepNext(p);
+      if (!nx) return toast("No neighbouring pile found");
+      pileStep = 1; walkTo(nx);
+    };
+    $("#s4again").onclick = () => go(1);
+  }
+
+  /* the foot is the same on every step: back, and a way past the question */
+  $("#panelFoot").innerHTML = "";
+  const back = el("button", "btn", "‹");
+  back.title = "Back a step";
+  back.onclick = () => {
+    if (n === 3 && $("#fNt")) { const v = $("#fNt").value.trim(); if (v !== (S.ov[k] || {}).nt) setPile(k, { nt: v }); }
+    if (n === 1) { closePanel(); S.cur = null; requestDraw(); }
+    else go(n === 3 && !(S.ov[k] || {}).st && (S.ov[k] || {}).tsI ? 1 : n - 1);
+  };
+  const mid = el("button", "btn wide", n === 4 ? "Done" : "Skip ▸");
+  mid.onclick = () => {
+    if (n === 3 && $("#fNt")) { const v = $("#fNt").value.trim(); if (v !== (S.ov[k] || {}).nt) setPile(k, { nt: v }); }
+    if (n === 4) { closePanel(); S.cur = null; requestDraw(); return; }
+    go(n + 1);
+  };
+  $("#panelFoot").append(back, mid);
+  if (n === 3) {
+    const sv = el("button", "btn pri wide", "Save note");
+    sv.onclick = () => {
+      const v = $("#fNt").value.trim();
+      if (v !== (S.ov[k] || {}).nt) setPile(k, { nt: v });
+      go(4);
+    };
+    $("#panelFoot").append(sv);
+  }
+  setTimeout(() => keepVisible(p), 30);
+}
+/* where "next pile" goes when a row is not being walked: along the rows if the layout has
+   them, otherwise simply the closest pile that has not been looked at */
+function stepNext(p) {
+  return stepAlong(p, ROW_BRG, true) || stepAlong(p, ROW_BRG + 180, true) || nearestOpen(p);
+}
+
+function openPile(k) {
+  if (noteFor && noteFor !== k) flushNote();
+  if (usePileSteps()) return openPileSteps(k);
+  const p = pileOf(k); if (!p) return;
   panelRefresh = () => { if (S.cur === k) openPile(k); };
   S.cur = k; requestDraw();
   const o = S.ov[k] || {};
@@ -3773,6 +4032,8 @@ function openPile(k) {
   const st = statusOf(k);
   openPanel("Pile " + p.id);
   $("#panelBody").innerHTML = `
+    ${(isPhone() && pileStepAll && !S.walk.on) ? `<button class="wklink" id="stepBack"
+      style="display:block;margin:0 0 6px;padding:8px 0">‹ Back to one question at a time</button>` : ""}
     ${walkStrip(p)}
     <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
       <span class="swatch" style="width:22px;height:22px;background:${esc(p.color)};border-color:${ST[st].ring};border-width:3px"></span>
@@ -3783,7 +4044,7 @@ function openPile(k) {
     <div class="readrow"><span>Pile type</span><b>${symSVG(p.sym || "array", "#00263A", 16)}
       ${esc((SYMBOLS[p.sym] || SYMBOLS.array).label)}${p.sub ? " · " + esc(p.sub) : ""}</b></div>
     ${p.size ? `<div class="readrow"><span>Size</span><b>${esc(p.size)}</b></div>` : ""}
-    <div class="readrow"><span>Block / Area</span><b>${esc(p.block || "—")}</b></div>
+    <div class="readrow"><span>Block / Area</span><b>${esc(p.block || "not set")}</b></div>
     ${(() => {
       /* Everything the survey gave us, folded away: needed now and then, in the way every
          time. Closed on a phone, open where there is room for it. */
@@ -3806,7 +4067,7 @@ function openPile(k) {
         <div class="chk ${f === p.block ? "on" : ""}">${f === p.block ? "✓" : ""}</div>
         <div class="nm"><b>${f === p.block ? "Showing block " + esc(p.block) + " only" : "Show only block " + esc(p.block)}</b><br>
           <span style="font-size:11px;color:var(--bm-steel)">${f === p.block
-        ? "Tap to bring the rest of the site back" : "Hides the rest of the site — less to read, and the map moves more smoothly"}</span></div></div>`;
+        ? "Tap to bring the rest of the site back" : "Hides the rest of the site. Less to read, and the map moves more smoothly"}</span></div></div>`;
     })() : ""}
 
     <div class="divider"></div>
@@ -3833,14 +4094,15 @@ function openPile(k) {
       ${o.dayR ? '<span style="color:var(--bm-steel);font-weight:400"> · ' + esc(o.dayR) + "</span>" : ""}</b></div>`}
 
     <div class="field"><label>Notes</label><textarea id="fNt" placeholder="Anything the next crew needs to know…">${esc(o.nt || "")}</textarea></div>
-    ${o.tsI ? `<div class="readrow"><span>Installed by</span><b>${[o.cr, o.dr, o.byI].filter(Boolean).map(esc).join(" · ") || "—"}
+    ${o.tsI ? `<div class="readrow"><span>Installed by</span><b>${[o.cr, o.dr, o.byI].filter(Boolean).map(esc).join(" · ") || "not recorded"}
       <span style="color:var(--bm-steel);font-weight:400"><br>${fmtDate(o.tsI)}</span></b></div>` : ""}
-    ${o.tsR ? `<div class="readrow"><span>Remediation by</span><b>${esc(o.byR || o.cr || "—")}
+    ${o.tsR ? `<div class="readrow"><span>Remediation by</span><b>${esc(o.byR || o.cr || "not recorded")}
       <span style="color:var(--bm-steel);font-weight:400"><br>${fmtDate(o.tsR)}</span></b></div>` : ""}
     <p class="hint" id="stampHint">${o.tsI || o.tsR ? "Anything you change now is stamped" : "This pile has no record yet. What you tap is stamped"}
-      <b>${esc(stampLine())}</b> — set under <b>Crew</b> in the toolbar.</p>
+      <b>${esc(stampLine())}</b>. Set under <b>Crew</b> in the toolbar.</p>
   `;
   const redraw = () => openPile(k);
+  if ($("#stepBack")) $("#stepBack").onclick = () => { pileStepAll = false; pileStep = 1; openPile(k); };
   if ($("#pFocus")) $("#pFocus").onclick = () => {
     if (focusedBlock() === p.block) showAllBlocks(); else focusBlock(p.block);
     openPile(k);
@@ -3862,8 +4124,9 @@ function openPile(k) {
   }
   const saveText = () => {
     const nt = $("#fNt").value.trim();
-    if (nt !== (S.ov[k] || {}).nt) setPile(k, { nt: nt });
+    if (nt !== ((S.ov[k] || {}).nt || "")) setPile(k, { nt: nt });
   };
+  noteFor = k;
   $("#fNt").onblur = saveText;
   walkWire(k, p, saveText);
 
@@ -3886,7 +4149,7 @@ function openPile(k) {
     wn.onclick = () => {
       saveText();
       if (q === "in") toast("Pile " + p.id + " installed");
-      else if (q === "ok") toast("Pile " + p.id + " — no issues");
+      else if (q === "ok") toast("Pile " + p.id + ", no issues");
       walkAdvance(k, q);
     };
     $("#panelFoot").append(wb, ws, wn);
@@ -3902,7 +4165,7 @@ function openPile(k) {
   b2.onclick = () => {
     saveText();
     if (canInstall()) { setPile(k, { st: 1 }); toast("Pile " + p.id + " marked installed"); }
-    else { setPile(k, { rm: 0, rf: 0, rt: "" }); toast("Pile " + p.id + " — no issues"); }
+    else { setPile(k, { rm: 0, rf: 0, rt: "" }); toast("Pile " + p.id + ", no issues"); }
     closePanel(); S.cur = null; requestDraw();
   };
   const inSel = S.sel.has(k);
@@ -3919,10 +4182,66 @@ function openPile(k) {
 }
 
 /* ---------------- bulk selection ---------------- */
+/* In crew mode this is a tool for one job: a row went in, mark the row. So it says how many are
+   selected, how many of those are already in, and offers installed or not installed and a note.
+   The block and spec breakdowns are reporting, which is the coordinator's screen, and the
+   remediation buttons are left out on purpose — four hundred piles flagged as refusals by one
+   stray box drag is not a mistake anybody wants to unpick in a field. Remediation stays on the
+   single pile, where somebody is looking at the pile they mean. */
+function openBulkCrew(arr) {
+  const done = arr.filter(p => isDone(p.k)).length;
+  const pct = arr.length ? Math.round(done / arr.length * 100) : 0;
+  $("#panelBody").innerHTML = `
+    <div class="home-stats" style="grid-template-columns:repeat(3,1fr);margin-top:0">
+      <div class="home-stat"><b>${arr.length.toLocaleString()}</b><span>Selected</span></div>
+      <div class="home-stat accent"><b>${done.toLocaleString()}</b><span>Already in</span></div>
+      <div class="home-stat"><b>${(arr.length - done).toLocaleString()}</b><span>Not yet</span></div>
+    </div>
+    <div class="home-bar" style="margin:10px 0 6px"><i style="width:${pct}%"></i></div>
+    <div class="divider"></div>
+    <div class="section-title">Apply to all ${arr.length.toLocaleString()} selected</div>
+    <div class="big" style="grid-template-columns:1fr 1fr">
+      <button class="bigbtn gsel" id="uInst">Mark installed</button>
+      <button class="bigbtn rsel" id="uNot">Mark not installed</button>
+    </div>
+    <div class="field"><label>Note to add to every selected pile</label>
+      <textarea id="uNt" placeholder="e.g. Pre-drilled 4 ft, rock at 6 ft"></textarea></div>
+    <p class="hint" style="margin:0 0 10px">Stamped <b>${esc(stampLine())}</b>. Change it under <b>Crew</b>.</p>
+    <button class="btn" id="uZoom" style="width:100%">Zoom to selection</button>
+    <p class="hint">Remediation is recorded one pile at a time. Tap a single pile to flag it.<br>
+      Tap <b>Multi-Select</b> in the toolbar to go back to opening piles one at a time.</p>`;
+  const apply = patch => {
+    const note = $("#uNt").value.trim();
+    beginAction(describePatch(patch, arr.length));
+    arr.forEach(p => {
+      const q = Object.assign({}, patch);
+      if (note) { const prev = (S.ov[p.k] && S.ov[p.k].nt) || ""; q.nt = prev && prev.indexOf(note) < 0 ? prev + "\n" + note : (prev || note); }
+      setPile(p.k, q);
+    });
+    endAction();
+    toast(arr.length.toLocaleString() + " piles updated · tap ↶ to undo", 4200);
+    openBulk();
+  };
+  $("#uInst").onclick = () => apply({ st: 1 });
+  $("#uNot").onclick = () => apply({ st: 0 });
+  $("#uZoom").onclick = () => {
+    const b = { wx0: Infinity, wx1: -Infinity, wy0: Infinity, wy1: -Infinity };
+    arr.forEach(p => { b.wx0 = Math.min(b.wx0, p.wx); b.wx1 = Math.max(b.wx1, p.wx); b.wy0 = Math.min(b.wy0, p.wy); b.wy1 = Math.max(b.wy1, p.wy); });
+    fitBounds(b, 60);
+  };
+  $("#panelFoot").innerHTML = "";
+  const c = el("button", "btn wide", "Clear");
+  c.onclick = () => { S.sel.clear(); updateSelBar(); closePanel(); requestDraw(); };
+  const d = el("button", "btn blue wide", "Done");
+  d.onclick = () => closePanel();
+  $("#panelFoot").append(c, d);
+  $("#panelBody").scrollTop = 0;
+}
 function openBulk() {
   panelRefresh = openBulk;
   const arr = [...S.sel].map(pileOf).filter(Boolean);
   openPanel("Area · " + arr.length.toLocaleString() + " piles");
+  if (crewMode()) return openBulkCrew(arr);
   const done = arr.filter(p => isDone(p.k)).length;
   const remN = arr.filter(p => statusOf(p.k) === "rem").length;
   const remDone = arr.filter(p => statusOf(p.k) === "fixed").length;
@@ -3977,7 +4296,7 @@ function openBulk() {
       <button class="bigbtn gsel" id="uInst">Mark installed</button>
       <button class="bigbtn rsel" id="uNot">Mark not installed</button>
     </div>` : ""}
-    ${canRemed() ? `<div class="big" style="grid-template-columns:1fr 1fr">
+    ${canBulkRemed() ? `<div class="big" style="grid-template-columns:1fr 1fr">
       ${REM_TYPES.map(t => `<button class="bigbtn rsel" data-urt="${esc(t)}">${esc(t)}</button>`).join("")}
     </div>
     <div class="big" style="grid-template-columns:1fr 1fr">
@@ -3986,7 +4305,7 @@ function openBulk() {
     </div>` : ""}
     <div class="field"><label>Note to add to every selected pile</label>
       <textarea id="uNt" placeholder="e.g. Pre-drilled 4 ft, rock at 6 ft"></textarea></div>
-    <p class="hint" style="margin:0 0 10px">Stamped <b>${esc(stampLine())}</b> — change it under <b>Crew</b>.</p>
+    <p class="hint" style="margin:0 0 10px">Stamped <b>${esc(stampLine())}</b>. Change it under <b>Crew</b>.</p>
     <button class="btn" id="uZoom" style="width:100%">Zoom to selection</button>
     <p class="hint">Use the pill at the top of the map to switch box drags between <b>Add</b> and <b>Remove</b>.
       Tapping a single pile toggles it either way. Tap <b>Multi-Select</b> in the toolbar to go back to opening piles one at a time.</p>
@@ -4007,7 +4326,7 @@ function openBulk() {
     $("#uInst").onclick = () => apply({ st: 1 });
     $("#uNot").onclick = () => apply({ st: 0 });
   }
-  if (canRemed()) {
+  if (canBulkRemed()) {
     $("#panelBody").querySelectorAll("[data-urt]").forEach(b => b.onclick = () => apply({ rm: 1, rf: 0, rt: b.dataset.urt }));
     $("#uNone").onclick = () => apply({ rm: 0, rf: 0, rt: "" });
     $("#uFix").onclick = () => apply({ rf: 1 });
@@ -4045,7 +4364,7 @@ function remStats() {
     byType.get(t)[o.rf ? "done" : "open"]++;
     if (!byBlock.has(p.block)) byBlock.set(p.block, { open: 0, done: 0 });
     byBlock.get(p.block)[o.rf ? "done" : "open"]++;
-    const d = o.dayR || "—";
+    const d = o.dayR || "no date";
     if (!byDay.has(d)) byDay.set(d, 0);
     byDay.set(d, byDay.get(d) + 1);
     if (!o.rf) open.push({ p, o, t });
@@ -4069,7 +4388,7 @@ function openPunch() {
       <div class="home-stat accent"><b>${R.open.length.toLocaleString()}</b><span>Open</span></div>
       <div class="home-stat"><b>${[...R.byType.values()].reduce((a, v) => a + v.done, 0).toLocaleString()}</b><span>Completed</span></div>
     </div>
-    <div class="section-title">By type — tap to filter</div>
+    <div class="section-title">By type, tap to filter</div>
     <div class="lgrow ${punchFilter === "" ? "" : "off"}" data-f=""><div class="chk ${punchFilter === "" ? "on" : ""}">${punchFilter === "" ? "✓" : ""}</div>
       <div class="nm">All types</div><div class="ct">${R.open.length.toLocaleString()} open</div></div>
     ${[...R.byType].map(([t, v]) => `<div class="lgrow ${punchFilter === t || punchFilter === "" ? "" : "off"}" data-f="${esc(t)}">
@@ -4137,7 +4456,7 @@ function openBlockPicker() {
     ${rows.map(([b, s]) => {
     const all = s.sel === s.n, some = s.sel > 0 && !all;
     return `<div class="lgrow" data-b="${esc(b)}">
-      <div class="chk ${all ? "on" : ""}" ${some ? 'style="background:var(--bm-orange);border-color:var(--bm-orange)"' : ""}>${all ? "✓" : some ? "–" : ""}</div>
+      <div class="chk ${all ? "on" : ""}" ${some ? 'style="background:var(--bm-orange);border-color:var(--bm-orange)"' : ""}>${all ? "✓" : some ? "•" : ""}</div>
       <div class="nm">${esc(b)}</div>
       <div class="ct">${s.n.toLocaleString()} piles · ${Math.round(s.done / s.n * 100)}% in</div></div>`;
   }).join("")}`;
@@ -4234,7 +4553,7 @@ function selectRingObj(r) {
 }
 function openBlockSetup() {
   const rs = S.blockRings;
-  if (!rs.length) return toast("No block outlines loaded — import the outline KMZ first");
+  if (!rs.length) return toast("No block outlines loaded. Import the outline KMZ first");
   if (rs[0].n == null) ringPileCounts();
   blkIdx = clamp(blkIdx, 0, rs.length - 1);
   const cur = rs[blkIdx];
@@ -4246,7 +4565,7 @@ function openBlockSetup() {
   requestDraw();
   $("#panelBody").innerHTML = `
     <p class="hint" style="margin:0 0 10px"><b>Tap a block on the map</b> to pick it, then type its number.
-      Unnamed blocks show a dash. The view stays where you put it — pan and zoom as you like.</p>
+      Unnamed blocks show a question mark. The view stays where you put it. Pan and zoom as you like.</p>
     <div style="border:2px solid var(--bm-orange);border-radius:var(--radius-lg);padding:12px;margin-bottom:12px">
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--bm-steel);font-weight:700">
         Selected · ${(cur.area / 4046.86).toFixed(1)} acres · ${(cur.n || 0).toLocaleString()} piles inside</div>
@@ -4261,10 +4580,10 @@ function openBlockSetup() {
       <button class="lyx" id="blkDrop" style="width:100%;margin-top:8px;height:38px">Remove this outline</button>
     </div>
     <div class="grid2">
-      <button class="btn" id="blkAuto">Number 1–${rs.length}</button>
+      <button class="btn" id="blkAuto">Number 1 to ${rs.length}</button>
       <button class="btn" id="blkClear">Clear all names</button>
     </div>
-    <p class="hint">Numbering runs in reading order — north row first, then west to east. Use it as a starting point
+    <p class="hint">Numbering runs in reading order, north row first, then west to east. Use it as a starting point
       and correct the ones that differ.</p>
     <div class="section-title">All outlines</div>
     ${rs.map((r, i) => `<div class="lgrow ${i === blkIdx ? "" : "off"}" data-ri="${i}"
@@ -4292,7 +4611,7 @@ function openBlockSetup() {
   $("#blkNext").onclick = () => step(1);
   $("#blkDrop").onclick = () => confirmRemove("Remove this outline?",
     `The outline${cur.name ? " numbered <b>" + esc(cur.name) + "</b>" : ""} and its number come off the map.
-     ${cur.n ? `The <b>${cur.n.toLocaleString()} piles</b> inside it stay exactly as they are, records and all —
+     ${cur.n ? `The <b>${cur.n.toLocaleString()} piles</b> inside it stay exactly as they are, records and all,
        only the boundary goes.` : "No piles sit inside it."}`,
     () => removeOneRing(cur.id));
   $("#blkAuto").onclick = () => {
@@ -4300,7 +4619,7 @@ function openBlockSetup() {
     rs.forEach((r, i) => r.name = String(i + 1));
     kvPut("blockRings", rs).catch(() => { });
     openBlockSetup(); requestDraw();
-    toast("Numbered 1–" + rs.length + " in reading order — correct any that differ");
+    toast("Numbered 1 to " + rs.length + " in reading order. Correct any that differ");
   };
   $("#blkClear").onclick = () => {
     rs.forEach(r => r.name = "");
@@ -4424,7 +4743,7 @@ async function removePileLayer(g) {
     <div class="readrow"><span>Block outlines left</span><b>${(S.blockRings || []).length}</b></div>
     <p class="hint">${orphans ? `Those ${orphans} outline${orphans === 1 ? "" : "s"} had no piles inside them
       once the layer was gone, so their numbers came off the map too. ` : ""}Counts and percent complete are
-      rebuilt from what is left. Undo does not cover this — re-import the file if you need it back.</p>`,
+      rebuilt from what is left. Undo does not cover this. Re-import the file if you need it back.</p>`,
     [{ t: "Done", cls: "btn pri", fn: closeModal }]);
 }
 
@@ -4533,7 +4852,7 @@ function openReset() {
       <div class="readrow ${recs ? "" : ""}"><span>Field records</span><b>${recs.toLocaleString()}</b></div>`
       : `<p style="margin:0 0 10px;font-size:13px">Nothing is loaded on this device.</p>`}
     ${recs ? `<p class="hint" style="margin:8px 0 10px;color:#8B0D2A"><b>${recs.toLocaleString()}
-      field record${recs === 1 ? "" : "s"} will be erased.</b> If they have not been sent in yet, export a backup first —
+      field record${recs === 1 ? "" : "s"} will be erased.</b> If they have not been sent in yet, export a backup first,
       there is no undo for this.</p>` : ""}
     <div class="section-title">Also delete</div>
     <div class="lgrow" id="rsTiles"><div class="chk">&nbsp;</div>
@@ -4550,7 +4869,7 @@ function openReset() {
   tileCount().then(n => {
     const el = $("#rsTilesN");
     if (el) el.textContent = n
-      ? n.toLocaleString() + " tiles cached — deleting them means downloading again on signal"
+      ? n.toLocaleString() + " tiles cached. Deleting them means downloading again on signal"
       : "nothing cached yet";
   });
   const tog = (id, set) => {
@@ -4581,7 +4900,7 @@ function confirmReset(tiles, imagery) {
         showBusy("Clearing the device", "Removing the project and its records…");
         await clearDevice(tiles, imagery);
         closeModal();
-        toast("Device cleared — import a project to start again", 3600);
+        toast("Device cleared. Import a project to start again", 3600);
       }
     }]);
 }
@@ -4618,7 +4937,7 @@ function openLayers() {
     DESIGN_KIND_LABEL[o.kind] || "", del("d", t))).join("");
   const ov = S.overlays.map(o => layerRow("ovl", o.id, o.name, null, o.on,
     `<span class="swatch" style="background:linear-gradient(135deg,#6BA43A,#009ADE);border-radius:2px"></span>`,
-    (o.kind === "xyz" ? "Live drone tiles" : "Stored on this device") + " · z" + o.minz + "–" + o.maxz)).join("");
+    (o.kind === "xyz" ? "Live drone tiles" : "Stored on this device") + " · zoom " + o.minz + " to " + o.maxz)).join("");
 
   $("#panelBody").innerHTML = `
     <p class="hint" style="margin:0 0 10px"><b>${shown.toLocaleString()}</b> of
@@ -4626,7 +4945,7 @@ function openLayers() {
       Anything switched off here is hidden from the map, from tapping and from box-select.</p>
 
     <details class="fold" open style="border-top:0;margin-top:0">
-      <summary>Pile points — as they were brought in<span class="ct">${S.pLayers.size}</span></summary>
+      <summary>Pile points, as they were brought in<span class="ct">${S.pLayers.size}</span></summary>
       <div class="foldbody">
       ${pl || '<p class="hint" style="margin:0">No pile points loaded.</p>'}
       ${S.pLayers.size > 1 ? `<div class="grid2" style="margin-top:8px">
@@ -4635,7 +4954,7 @@ function openLayers() {
       </div></details>
 
     ${dl ? `<details class="fold" open>
-      <summary>Drawing — line work from the file<span class="ct">${S.dLayers.size}</span></summary>
+      <summary>Drawing, line work from the file<span class="ct">${S.dLayers.size}</span></summary>
       <div class="foldbody">${dl}
       <div class="grid2" style="margin-top:8px">
         <button class="btn" id="dlAll" style="height:38px;font-size:12px">All on</button>
@@ -4673,7 +4992,7 @@ function openLayers() {
     <div class="lgrow" id="lyRm"><div class="chk ${layerRemove ? "on" : ""}">${layerRemove ? "✓" : ""}</div>
       <div class="nm"><b>Show a Remove button on each layer</b><br>
         <span style="font-size:11px;color:var(--bm-steel)">For when the wrong file went in. Piles and their
-          records go with the layer — there is no undo</span></div></div>
+          records go with the layer. There is no undo</span></div></div>
     ${(S.blockRings && S.blockRings.length && layerRemove) ? `<div class="lgrow">
       <div class="nm">All block outlines<br><span style="font-size:11px;color:var(--bm-steel)">${S.blockRings.length}
         outline${S.blockRings.length === 1 ? "" : "s"} and their numbers · to remove just one, use
@@ -4691,7 +5010,7 @@ function openLayers() {
     <div class="lgrow" id="lyFilters"><div class="nm"><b>Status filters</b><br>
       <span style="font-size:11px;color:var(--bm-steel)">${S.filt.status === "all" && !S.filt.rem && !S.filt.mine
         ? "none set" : "in use"} · set them in Filters</span></div><div class="ct">▸</div></div>
-    <p class="hint">Layer switches are for reading the map, not for the record — hiding a layer never changes
+    <p class="hint">Layer switches are for reading the map, not for the record. Hiding a layer never changes
       what has been recorded on a pile, and every pile still comes out in the exports.</p>`;
 
   const bump = () => { updateFilterBtn(); openLayers(); requestDraw(); };
@@ -4710,14 +5029,14 @@ function openLayers() {
     S.showBlockNames = !S.showBlockNames; saveSettings(); bump();
   });
   if ($("#plAll")) $("#plAll").onclick = () => { S.pLayers.forEach(o => o.on = true); bump(); };
-  if ($("#plNone")) $("#plNone").onclick = () => { S.pLayers.forEach(o => o.on = false); bump(); toast("All pile points hidden — the drawing stays"); };
+  if ($("#plNone")) $("#plNone").onclick = () => { S.pLayers.forEach(o => o.on = false); bump(); toast("All pile points hidden. The drawing stays"); };
   if ($("#dlAll")) $("#dlAll").onclick = () => { S.dLayers.forEach(o => o.on = true); bump(); };
   if ($("#dlNone")) $("#dlNone").onclick = () => { S.dLayers.forEach(o => o.on = false); bump(); };
   $("#lyBase").querySelectorAll("[data-p]").forEach(n => n.onclick = () => {
     S.base = n.dataset.p; saveSettings(); bump();
-    if (S.base !== "none" && !navigator.onLine) toast("Offline — only imagery already saved to this device will show");
+    if (S.base !== "none" && !navigator.onLine) toast("Offline. Only imagery already saved to this device will show");
   });
-  $("#lyRm").onclick = () => { layerRemove = !layerRemove; openLayers(); };
+  $("#lyRm").onclick = () => gate("layers", "Removing a layer", () => { layerRemove = !layerRemove; openLayers(); });
   if ($("#lyRmEmpty")) $("#lyRmEmpty").onclick = () => {
     const n = emptyRingCount();
     confirmRemove(n + " outline" + (n === 1 ? "" : "s") + " with no piles inside?",
@@ -4730,7 +5049,7 @@ function openLayers() {
         toast(gone + " empty outline" + (gone === 1 ? "" : "s") + " removed · " + S.blockRings.length + " left");
       });
   };
-  $("#lyReset").onclick = openReset;
+  $("#lyReset").onclick = () => gate("wipe", "Starting over on this device", openReset);
   if ($("#lyRmRings")) $("#lyRmRings").onclick = () => confirmRemove(
     "Remove the block outlines?",
     S.blockRings.length + " outline" + (S.blockRings.length === 1 ? "" : "s") + " will be removed from the map. "
@@ -4743,7 +5062,7 @@ function openLayers() {
     confirmRemove("Remove " + g + "?",
       `<b>${(o ? o.n : 0).toLocaleString()} piles</b> and <b>${recs.toLocaleString()}
        field record${recs === 1 ? "" : "s"}</b> will be removed from this device, and every count rebuilt from
-       what is left. There is no undo — re-import the file if you need it back.`,
+       what is left. There is no undo. Re-import the file if you need it back.`,
       () => removePileLayer(g), recs > 0);
   });
   $("#panelBody").querySelectorAll("[data-rmd]").forEach(n => n.onclick = ev => {
@@ -4753,8 +5072,8 @@ function openLayers() {
       (o ? o.n.toLocaleString() : "0") + " shapes will be removed from the drawing. No piles and no records are touched.",
       () => removeDesignLayer(l));
   });
-  if ($("#lySetup")) $("#lySetup").onclick = openBlockSetup;
-  $("#lyImagery").onclick = openImagery;
+  if ($("#lySetup")) $("#lySetup").onclick = () => gate("blocks", "Labelling the blocks", openBlockSetup);
+  $("#lyImagery").onclick = () => gate("imagery", "Adding or changing drone imagery", openImagery);
   $("#lyLegend").onclick = openLegend;
   $("#lyFilters").onclick = openFilters;
 
@@ -4821,8 +5140,8 @@ function openLegend() {
     <details class="fold"${isPhone() ? "" : " open"}>
       <summary>What the outlines mean</summary>
       <div class="foldbody">
-      <p class="hint" style="margin-top:0">Fill colour is the pile spec — the colour and size from the layout. The outline is progress:</p>
-      ${key("open", "Not installed")}${key("in", "Installed — no remediation")}
+      <p class="hint" style="margin-top:0">Fill colour is the pile spec, the colour and size from the layout. The outline is progress:</p>
+      ${key("open", "Not installed")}${key("in", "Installed, no remediation")}
       ${key("rem", "Remediation required")}${key("fixed", "Remediated, complete")}
       </div>
     </details>
@@ -4836,7 +5155,7 @@ function openLegend() {
         <span>${esc(t)}</span>
         <span style="margin-left:auto;background:#00263A;padding:2px 7px;border-radius:3px;
           font-weight:700;font-size:11px;color:${REM_COLOR[t]}">P-1042</span></div>`).join("")}
-      <p class="hint">Zoom in and the Point ID appears above each pile in the same colour —
+      <p class="hint">Zoom in and the Point ID appears above each pile in the same colour,
         <span style="background:#00263A;padding:1px 5px;border-radius:3px;color:#FFFFFF;font-weight:700">white</span> not installed,
         <span style="background:#00263A;padding:1px 5px;border-radius:3px;color:#6BA43A;font-weight:700">green</span> installed or remediated,
         and the remediation colour above when one is open.</p>
@@ -4860,7 +5179,7 @@ function openLegend() {
         </div></details>`;
     })()}
     <details class="fold" open>
-      <summary>Pile spec — installed / total<span class="ct">${S.types.size} spec${S.types.size === 1 ? "" : "s"}</span></summary>
+      <summary>Pile spec, installed / total<span class="ct">${S.types.size} spec${S.types.size === 1 ? "" : "s"}</span></summary>
       <div class="foldbody">${rows}</div></details>
     <details class="fold"${S.blocks.size > 12 ? "" : " open"}>
       <summary>Blocks / areas<span class="ct">${S.blocks.size}</span></summary>
@@ -4886,12 +5205,11 @@ function openLegend() {
   $("#panelBody").querySelectorAll("[data-b]").forEach(n => n.onclick = () => {
     const o = S.blocks.get(n.dataset.b); o.on = !o.on; updateFilterBtn(); openLegend(); requestDraw();
   });
-  if ($("#bnSetup")) $("#bnSetup").onclick = openBlockSetup;
-  if ($("#bnSetup")) $("#bnSetup").onclick = openBlockSetup;
   if ($("#bnToggle")) $("#bnToggle").onclick = () => {
     S.showBlockNames = !S.showBlockNames; saveSettings(); openLegend(); requestDraw();
   };
   $("#lgLayers").onclick = openLayers;
+  if ($("#bnSetup")) $("#bnSetup").onclick = () => gate("blocks", "Labelling the blocks", openBlockSetup);
   $("#panelBody").querySelectorAll("[data-d]").forEach(n => n.onclick = () => {
     const o = S.dLayers.get(n.dataset.d); o.on = !o.on; openLegend(); requestDraw();
   });
@@ -4935,15 +5253,22 @@ function openMore() {
   const pending = Object.keys(S.ov).filter(k => S.ov[k] && S.ov[k].ts).length;
   const hidden = S.piles.length - S.piles.filter(p => passFilt(p)).length;
   const off = [...S.pLayers.values()].filter(o => !o.on).length + [...S.dLayers.values()].filter(o => !o.on).length;
-  const has = !!S.proj;
+  /* In crew mode the menu is four rows: fit the site on screen, the day's export, the crew
+     name and help. Filters, layers, block labelling, the legend, the punch list, the progress
+     dashboard and project data all belong to the coordinator and are simply absent. */
+  const has = !!S.proj && !crewMode();
   $("#panelBody").innerHTML = `
+    ${crewMode() && S.proj ? menuRow("mFit", "fit", "Zoom to all piles", "Fit the whole site on screen") : ""}
+    ${crewMode() ? menuRow("mSync", "sync", "Export the day",
+      pending ? "Records on this device to send in" : "Nothing recorded on this device yet",
+      pending ? pending.toLocaleString() : "", pending > 0) : ""}
     ${has ? menuRow("mFilter", "filter", "Filters",
       hidden ? hidden.toLocaleString() + " piles hidden right now" : "Show only what you are working on",
       hidden ? "on" : "", !!hidden) : ""}
     ${has ? menuRow("mLayers", "layers", "Layers",
       `${S.pLayers.size} pile layer${S.pLayers.size === 1 ? "" : "s"}, ${S.dLayers.size} drawing`
       + (off ? " · " + off + " off" : ""), off ? String(off) : "", !!off) : ""}
-    ${(S.blockRings && S.blockRings.length) ? (() => {
+    ${(has && S.blockRings && S.blockRings.length) ? (() => {
       /* This was reachable only by opening the Legend and scrolling to the bottom of it,
          which on a phone is no way to find anything. It is a job of its own, so it gets a
          row of its own, and says how much of it is left. */
@@ -4964,8 +5289,10 @@ function openMore() {
     ${has ? menuRow("mSync", "sync", "Sync &amp; reports",
       pending ? "Records on this device to send in" : "Export the day, merge crew files",
       pending ? pending.toLocaleString() : "", pending > 0) : ""}
-    ${menuRow("mData", "data", "Project data",
+    ${crewMode() ? "" : menuRow("mData", "data", "Project data",
       has ? "Add files, or take an import back off" : "Load the layout and the pile spreadsheet")}
+    ${crewMode() && !S.proj ? menuRow("mPack", "data", "Open the day's pack",
+      "The file the coordinator sent you", "start here", true) : ""}
     ${menuRow("mCrew", "crew", "This device",
       [S.dev.crew, S.dev.driver].filter(Boolean).join(" · ") || "Set the crew name before recording",
       S.dev.crew ? "" : "set up", !S.dev.crew)}
@@ -4974,9 +5301,10 @@ function openMore() {
      is a bounce you can see on a phone, so only the rows that are not panels close it. */
   const go = (id, fn, shut) => { const n = $(id); if (n) n.onclick = () => { if (shut) closePanel(); fn(); }; };
   go("#mFilter", openFilters); go("#mLayers", openLayers); go("#mLegend", openLegend);
-  go("#mBlocks", openBlockSetup);
+  go("#mBlocks", () => gate("blocks", "Labelling the blocks", openBlockSetup));
   go("#mPunch", openPunch); go("#mDash", openDashboard); go("#mSync", openSync);
-  go("#mData", openImport, true); go("#mCrew", openCrew, true); go("#mHelp", openHelp, true);
+  go("#mData", () => gate("project", "Loading or changing project files", openImport), true); go("#mCrew", openCrew, true); go("#mHelp", openHelp, true);
+  go("#mPack", pickPack, true);
   go("#mFit", () => { if (S.proj) fitBounds(S.proj.bounds, 40); }, true);
   $("#panelFoot").innerHTML = "";
   const b = el("button", "btn blue wide", "Close");
@@ -5041,7 +5369,7 @@ function openFilters() {
     <div class="section-title">Only show</div>
     <div class="lgrow" data-f="rem"><div class="chk ${S.filt.rem ? "on" : ""}">${S.filt.rem ? "✓" : ""}</div><div class="nm">Open remediation only</div></div>
     <div class="lgrow" data-f="mine"><div class="chk ${S.filt.mine ? "on" : ""}">${S.filt.mine ? "✓" : ""}</div><div class="nm">Piles this device recorded</div></div>
-    <p class="hint">Filters change what you can tap and what box-select picks up — handy for sweeping a block for leftovers at the end of the shift.</p>
+    <p class="hint">Filters change what you can tap and what box-select picks up, handy for sweeping a block for leftovers at the end of the shift.</p>
     ${S.blocks.size > 1 ? `<div class="section-title">Focus</div>
       ${(() => {
         const f = focusedBlock();
@@ -5085,7 +5413,9 @@ function openFilters() {
 function updateCrewBtn() {
   const b = $("#btnCrew");
   const name = (S.dev.crew || "").trim();
-  b.textContent = name ? (name.length > 14 ? name.slice(0, 13) + "…" : name) : "Crew";
+  const lbl = name ? (name.length > 14 ? name.slice(0, 13) + "…" : name) : "Crew";
+  /* rebuilt rather than assigned to textContent, which would take the role badge with it */
+  b.innerHTML = esc(lbl) + `<span class="roletag ${role()}" id="roleTag">${esc(ROLES[role()].label)}</span>`;
   b.classList.toggle("on", !!name);
 }
 /* Every device can record both install and remediation. */
@@ -5095,21 +5425,801 @@ const canRemed = () => true;
 /* what gets stamped on every pile this device records */
 const stampLine = () => [S.dev.crew, S.dev.driver, S.dev.name].filter(Boolean).join(" · ") || "not set";
 
+/* ============================================================
+   Roles — Admin, Coordinator, Guest
+
+   What this is: a per-device setting that decides which tools that device offers, with a
+   passcode on the two that can change a project.
+
+   What it is not, and must never be described as: access control. The whole app is one file
+   served from a URL, so anyone who can open it already has every line of it, and a check
+   written in JavaScript can be got round by anyone who cares to. Verifying a person needs a
+   server to verify against, and there isn't one.
+
+   What it is good for is the thing that actually goes wrong: a crew tablet in a truck for
+   twelve hours, with a project on it that took an afternoon to set up, and any number of ways
+   to wreck it by tapping the wrong row. Guest is the default, and a Guest device cannot
+   replace the project, relabel the blocks, remove a layer or wipe itself. That is a guardrail
+   against accidents and idle hands, and it is worth having on its own terms.
+
+   The passcode is stored as a salted SHA-256 on the device, never in this file, so nobody
+   reads it out of the source. A short code is still guessable by someone patient with the
+   device in their hands — the app says so where it is set, rather than implying otherwise.
+   ============================================================ */
+const ROLES = {
+  guest: {
+    label: "Guest", who: "Field crew",
+    can: "Record piles, walk rows, filter and focus the map, export the day's work.",
+    cannot: "Cannot change the project itself."
+  },
+  coordinator: {
+    label: "Coordinator", who: "Project PM / PE",
+    can: "Everything on this project, blocks, layers, merging crew files, reports and packs.",
+    cannot: "Cannot build a project from the engineer's files or wipe the device."
+  },
+  admin: {
+    label: "Admin", who: "LAT team",
+    can: "Everything, including setting a project up from the design files and clearing the device.",
+    cannot: ""
+  }
+};
+/* Everything a role may do that a Guest may not. Anything absent is open to all three. */
+const CAPS = {
+  guest: [],
+  coordinator: ["blocks", "layers", "merge", "reports", "packs", "imagery", "assign"],
+  admin: ["blocks", "layers", "merge", "reports", "packs", "imagery", "assign", "project", "wipe"]
+};
+const role = () => bakedRole() || (ROLES[S.role] ? S.role : "guest");
+/* A device with no passcode on it yet is unclaimed, and unclaimed means open: otherwise the
+   very first person to set a tablet up could not load a project onto it, having nothing to
+   sign in with. Setting a passcode is what turns Guest into a restricted role. */
+const claimed = () => !!(S.auth && (S.auth.coordinator || S.auth.admin));
+/* The unclaimed escape hatch is there so somebody can set a bare tablet up. A standalone build
+   has nothing to set up — it arrives with its project and its role already decided — so the
+   hatch must not apply to it, or a crew file would hand out every tool in the app. */
+const can = a => (!claimed() && !bakedRole()) || CAPS[role()].indexOf(a) >= 0;
+/* One place to refuse, so every refusal reads the same and says what would fix it */
+function needRole(a, what) {
+  const lvl = CAPS.coordinator.indexOf(a) >= 0 ? "Coordinator" : "Admin";
+  toast(what + " needs " + lvl + ". Sign in under Crew", 3600);
+  return false;
+}
+const gate = (a, what, fn) => can(a) ? fn() : needRole(a, what);
+
+/* salted SHA-256, so a passcode is never held or compared in the clear */
+async function hashCode(code, salt) {
+  const enc = new TextEncoder().encode(salt + ":" + code);
+  if (typeof crypto === "undefined" || !crypto.subtle) return null;
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+function newSalt() {
+  const a = new Uint8Array(16);
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) crypto.getRandomValues(a);
+  else for (let i = 0; i < 16; i++) a[i] = Math.floor(Math.random() * 256);
+  return [...a].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function setRoleCode(r, code) {
+  if (!S.auth.salt) S.auth.salt = newSalt();
+  const h = await hashCode(code, S.auth.salt);
+  if (!h) return false;
+  S.auth[r] = h; saveSettings();
+  return true;
+}
+async function tryRole(r, code) {
+  const want = S.auth[r];
+  if (!want) return false;
+  const h = await hashCode(code, S.auth.salt || "");
+  return !!h && h === want;
+}
+function setRole(r) {
+  S.role = ROLES[r] ? r : "guest";
+  saveSettings(); updateCrewBtn(); updateRoleBadge();
+  if (atHome()) renderHome();
+  requestDraw();
+}
+function updateRoleBadge() {
+  const b = $("#roleTag");
+  if (!b) return;
+  b.textContent = ROLES[role()].label;
+  b.className = "roletag " + role();
+}
+
+/* ============================================================
+   Handing a project to a crew device
+
+   A coordinator sets a project up once and then has to get it onto three tablets before the
+   shift starts, in a trailer, possibly on a phone hotspot. So it travels as one file that
+   carries everything a tablet needs — the layout, the drawing, the block numbers and the
+   progress so far — and comes up on the tablet as Guest with the project already loaded.
+
+   The pack is importable by anybody, deliberately. Raw design files are not: those build a
+   project and stay with Admin. A pack is a finished project being handed over, which is the
+   one thing a crew device must be able to accept on its own.
+   ============================================================ */
+function packFile() {
+  return {
+    fmt: "bm-pile-pack", v: 1, app: APP_VER, at: nowTs(),
+    by: { crew: S.dev.crew || "", name: S.dev.name || "", role: role() },
+    role: "guest",
+    proj: S.proj, ov: S.ov,
+    piles: S.piles.map(p => [p.k, p.id, p.g, p.block, p.type, p.lat, p.lon, p.ex, p.size || "", p.sym || "array", p.sub || ""]),
+    design: S.design.map(f => [f.t, f.l, f.n, f.c, f.sc, f.sw, f.sf]),
+    blockRings: S.blockRings || []
+  };
+}
+function exportGuestPack() {
+  if (!S.proj) return toast("Load a project first");
+  const j = packFile();
+  const recs = Object.keys(j.ov).filter(k => j.ov[k] && j.ov[k].ts).length;
+  const nm = `${dayStamp(new Date())}_${slug(S.proj.name)}_CREW-PACK.pilepack.json`;
+  saveOrShare(nm, new Blob([JSON.stringify(j)], { type: "application/json" }));
+  toast(S.piles.length.toLocaleString() + " piles · " + recs.toLocaleString()
+    + " records · opens as Guest on any tablet", 4200);
+}
+/* How much of what is on this device the incoming pack has not heard about.
+
+   Counts per half, the same way the merge does. A pile the crew drove this morning is unheard
+   of if the pack has no record of it at all, or if the pack's install half is older than
+   ours — which is exactly the work that used to disappear. */
+function unheardRecords(mine, theirs) {
+  let n = 0;
+  for (const k in (mine || {})) {
+    const a = mine[k];
+    if (!a || !(a.ts || a.tsI || a.tsR)) continue;
+    const b = (theirs || {})[k];
+    if (!b) { n++; continue; }
+    if (tsI(a) > tsI(b) || tsR(a) > tsR(b)
+      || (a.tsN || a.ts || 0) > (b.tsN || b.ts || 0)) n++;
+  }
+  return n;
+}
+
+/* Accepts a pack on any device, whatever role it is in, and leaves it as Guest.
+
+   The morning pack used to replace this device's records outright. That is right when the pack
+   is a different job, and quietly catastrophic when it is the same one: a crew who worked all
+   day and forgot to export lost the day the moment they opened the pack, with no warning and
+   nothing to undo. It is the same job in nearly every case, because that is what a morning
+   update is.
+
+   So for a matching project the pack is now the base and this device's records are merged on
+   top of it, half by half, newest edit winning — the identical rule the coordinator's merge
+   already uses. Nothing can be lost by opening a pack. The device is still told when it is
+   holding work nobody has collected, because the coordinator needs that file regardless, but
+   it is now advice rather than a trap. */
+async function openPack(j, opts) {
+  if (!j || j.fmt !== "bm-pile-pack" || !j.piles || !j.piles.length) return false;
+  const same = !!(S.proj && j.proj && S.proj.fp === j.proj.fp);
+  /* deep copy: activateProject is about to clear S.ov */
+  const mine = same ? JSON.parse(JSON.stringify(S.ov || {})) : null;
+  const unheard = same ? unheardRecords(mine, j.ov || {}) : 0;
+
+  if (unheard && !(opts && opts.go)) {
+    modal("This device has work nobody has collected", `
+      <div class="readrow" style="border-top:0"><span>Records not in this pack</span>
+        <b style="color:var(--bm-orange)">${unheard.toLocaleString()}</b></div>
+      <div class="readrow"><span>Project</span><b>${esc(j.proj.name)}</b></div>
+      <div class="readrow"><span>Pack made</span><b>${fmtDate(j.at)}</b></div>
+      <p class="hint" style="margin:10px 0 0">Opening the pack will <b>not</b> lose any of it. Your records are
+        merged into the pack rather than replaced, pile by pile, with the newest entry winning.
+        But the coordinator still needs this work, and the only copy of it is this tablet.
+        Export it first and it is safe whatever happens to the device.</p>`,
+      [{ t: "Export, then open the pack", cls: "btn pri", fn: () => { exportDay(); closeModal(); openPack(j, { go: 1 }); } },
+      { t: "Open the pack now", cls: "btn", fn: () => { closeModal(); openPack(j, { go: 1 }); } },
+      { t: "Cancel", cls: "btn", fn: closeModal }]);
+    return true;
+  }
+
+  const built = restorePiles(j.piles, j.proj, j.design);
+  await activateProject(built, false);
+  S.ov = j.ov || {};
+  let kept = 0;
+  if (same && mine) {
+    const stats = { added: 0, updated: 0, older: 0, same: 0, unknown: 0, conflicts: [] };
+    /* deliberately not an undoable action: an undo here would roll the crew's own records
+       back to the pack's version of them, which is the very thing this is preventing */
+    mergeRecords(mine, "this device", stats);
+    kept = stats.added + stats.updated;
+  }
+  S.blockRings = (j.blockRings || []).map(r => Object.assign({}, r));
+  S.blockRings.forEach(r => { if (r.ring) r.mid = labelPoint(r.ring); });
+  await kvPut("ov", S.ov);
+  await kvPut("blockRings", S.blockRings);
+  setRole("guest");
+  refreshKPI(); showHome(false); requestDraw();
+  const recs = Object.keys(S.ov).filter(k => S.ov[k] && S.ov[k].ts).length;
+  modal("Ready to work", `
+    <div class="readrow" style="border-top:0"><span>Project</span><b>${esc(S.proj.name)}</b></div>
+    <div class="readrow"><span>Piles</span><b>${S.piles.length.toLocaleString()}</b></div>
+    <div class="readrow"><span>Already recorded</span><b>${recs.toLocaleString()}</b></div>
+    ${kept ? `<div class="readrow"><span>Kept from this device</span>
+      <b style="color:var(--bm-green)">${kept.toLocaleString()}</b></div>` : ""}
+    <div class="readrow"><span>Block outlines</span><b>${S.blockRings.length}</b></div>
+    <div class="readrow"><span>Sent by</span><b>${esc([j.by && j.by.crew, j.by && j.by.name].filter(Boolean).join(" · ") || "not recorded")}
+      <span style="color:var(--bm-steel);font-weight:400"><br>${fmtDate(j.at)}</span></b></div>
+    <p class="hint">This device is set to <b>Guest</b>: record piles, walk rows and export the day.
+      The project itself cannot be changed from here. Set the crew name under <b>Crew</b> before you start,
+      that is what stamps every pile you record.</p>`,
+    [{ t: "Start", cls: "btn pri", fn: () => { closeModal(); openCrew(); } }]);
+  return true;
+}
+
+/* ============================================================
+   Combining the engineer's pile files
+
+   The pile points arrive as a pile of separate exports — on the Silver Creek job, seventeen of
+   them, one per colour and block: Blocks30-31_Red.csv, Block32_Black.csv,
+   2026-05-26 ALL INVERTER PILE.csv. Consolidating those into one master sheet by hand is an
+   afternoon of copy and paste, and every column that gets nudged out of line is a pile in the
+   wrong place later.
+
+   So this does it, and — the part that matters — it checks the result before handing it over.
+   A tool that promises the output "always works" has to be the thing that proves it, not the
+   thing that hopes.
+
+   Two facts about these files do most of the work. The colour is usually in the file name
+   rather than in a column, and so is the block, and sometimes the pile type. And the Point IDs
+   are not unique across files: the inverter piles restart at 1, which produced 542 duplicate
+   IDs on Silver Creek. A duplicate ID breaks the join to a spreadsheet and makes two different
+   piles look like one, so it is found, counted and offered a fix rather than passed on.
+   ============================================================ */
+const COMBINE_COLS = ["Pile ID", "Northing", "Easting", "TOP Elevation", "Color", "Pile Type"];
+
+/* longest first, so "Light Green" is not read as "Green" */
+const NAME_COLORS = ["Light Green", "Dark Green", "Light Blue", "Dark Blue", "Light Grey",
+  "Dark Grey", "Light Gray", "Dark Gray", "Green", "Blue", "Black", "White", "Yellow", "Orange",
+  "Purple", "Brown", "Pink", "Red", "Grey", "Gray", "Tan", "Cyan", "Magenta", "Lime", "Teal",
+  "Navy", "Olive", "Silver", "Gold"];
+const SEP = "(^|[^a-z0-9])", SEPZ = "([^a-z0-9]|$)";
+const nameRe = word => new RegExp(SEP + word + SEPZ, "i");
+const NAME_TYPES = [
+  [nameRe("cab[_ -]*dead[_ -]*end"), "CAB dead-end"],
+  [nameRe("cab[_ -]*dead"), "CAB dead-end"],
+  [nameRe("cab[_ -]*mid(span)?"), "CAB midspan"],
+  [nameRe("inverter"), "Inverter"], [nameRe("cab"), "CAB"], [nameRe("dcd"), "DCD"],
+  [nameRe("met"), "MET"], [nameRe("motor"), "Motor"], [nameRe("array"), "Array"]
+];
+/* What the file name itself tells us. On this job it carries the colour nearly every time,
+   the block most times, and the pile type when the export was made per type. */
+function inferFromName(name) {
+  const base = String(name || "").replace(/\.[^.]*$/, "");
+  const out = { color: "", type: "", block: "" };
+  for (const c of NAME_COLORS) {
+    if (new RegExp("(^|[^a-z])" + c.replace(/ /g, "[ _-]") + "([^a-z]|$)", "i").test(base)) { out.color = c; break; }
+  }
+  /* "CAB_DCD_MET Pile" is one name with three types in it — a guess there would be wrong more
+     often than right, so an ambiguous name says nothing and the coordinator is asked instead.
+     Note the boundaries are written out rather than using \b, which counts an underscore as a
+     word character and so fails on exactly the names this job uses. */
+  let labels = [...new Set(NAME_TYPES.filter(([re]) => re.test(base)).map(([, t]) => t))];
+  /* "CAB dead-end" also matches plain "CAB" — that is a refinement, not a disagreement, so
+     drop the general one. "CAB_DCD_MET" matches three unrelated types and stays ambiguous. */
+  labels = labels.filter(t => !labels.some(o => o !== t && o.indexOf(t) === 0));
+  if (labels.length === 1) out.type = labels[0];
+  else if (labels.length > 1) out.ambiguous = labels;
+  const b = /blocks?[_ -]*([0-9]+(?:\s*[-–,&]\s*[0-9]+)*)/i.exec(base);
+  if (b) out.block = b[1].replace(/\s+/g, "");
+  return out;
+}
+
+/* Read one file into rows keyed to the standard columns, saying what it did and what it could
+   not use. Nothing is silently dropped — every row that does not make it is counted. */
+function readPileFile(name, text) {
+  const cs = parseCSV(text);
+  const H = cs.head.map(h => String(h || "").trim());
+  const find = re => { const i = H.findIndex(h => re.test(h)); return i < 0 ? -1 : i; };
+  const iId = find(ID_KEYS), iN = find(NOR_KEYS), iE = find(EAS_KEYS);
+  const iZ = find(ELEV_KEYS), iC = find(COLOR_KEYS), iT = find(SYMBOL_KEYS), iB = find(BLOCK_KEYS);
+  const guess = inferFromName(name);
+  const rows = [], bad = { id: 0, coord: 0 };
+  for (const r of cs.rows) {
+    const id = iId >= 0 ? String(r[iId] == null ? "" : r[iId]).trim() : "";
+    const n = iN >= 0 ? Number(String(r[iN]).replace(/[, ]/g, "")) : NaN;
+    const e = iE >= 0 ? Number(String(r[iE]).replace(/[, ]/g, "")) : NaN;
+    if (!id) { bad.id++; continue; }
+    if (!isFinite(n) || !isFinite(e) || (n === 0 && e === 0)) { bad.coord++; continue; }
+    rows.push({
+      id, n, e,
+      z: iZ >= 0 ? String(r[iZ] == null ? "" : r[iZ]).trim() : "",
+      color: (iC >= 0 ? String(r[iC] == null ? "" : r[iC]).trim() : "") || guess.color,
+      type: (iT >= 0 ? String(r[iT] == null ? "" : r[iT]).trim() : "") || guess.type,
+      block: (iB >= 0 ? String(r[iB] == null ? "" : r[iB]).trim() : "") || guess.block,
+      src: name
+    });
+  }
+  /* a Northing or Easting typed with a digit missing lands a long way from its neighbours */
+  let far = 0;
+  if (rows.length > 8) {
+    const med = a => { const b = [...a].sort((x, y) => x - y); return b[b.length >> 1]; };
+    const mn = med(rows.map(r => r.n)), me = med(rows.map(r => r.e));
+    const sp = med(rows.map(r => Math.abs(r.n - mn) + Math.abs(r.e - me))) || 1;
+    for (const r of rows) if (Math.abs(r.n - mn) + Math.abs(r.e - me) > sp * 60) { r.far = true; far++; }
+  }
+  return {
+    name, rows, bad, far,
+    cols: { id: iId >= 0 ? H[iId] : null, n: iN >= 0 ? H[iN] : null, e: iE >= 0 ? H[iE] : null,
+      z: iZ >= 0 ? H[iZ] : null, color: iC >= 0 ? H[iC] : null, type: iT >= 0 ? H[iT] : null,
+      block: iB >= 0 ? H[iB] : null },
+    guess, header: H, total: cs.rows.length
+  };
+}
+
+/* Everything wrong with the combined set, in the order it matters. */
+function combineIssues(files) {
+  const all = [].concat(...files.map(f => f.rows));
+  const seen = new Map();
+  for (const r of all) {
+    if (!seen.has(r.id)) seen.set(r.id, []);
+    seen.get(r.id).push(r);
+  }
+  const dupIds = [...seen].filter(([, a]) => a.length > 1);
+  return {
+    total: all.length,
+    dropped: files.reduce((a, f) => a + f.bad.id + f.bad.coord, 0),
+    noId: files.reduce((a, f) => a + f.bad.id, 0),
+    noCoord: files.reduce((a, f) => a + f.bad.coord, 0),
+    far: files.reduce((a, f) => a + f.far, 0),
+    dupIds, dupRows: dupIds.reduce((a, [, x]) => a + x.length, 0),
+    noColor: all.filter(r => !r.color).length,
+    noType: all.filter(r => !r.type).length,
+    blocks: new Set(all.filter(r => r.block).map(r => r.block)).size,
+    missingCols: files.filter(f => !f.cols.id || !f.cols.n || !f.cols.e).map(f => f.name)
+  };
+}
+
+/* The master sheet. Block rides along when any file knew one — the tracker reads it, and it
+   saves labelling the blocks by hand later. */
+function buildMasterCsv(files, opts) {
+  const uniq = !!(opts && opts.uniqueIds);
+  const dropFar = !(opts && opts.keepFar);
+  const all = [].concat(...files.map(f => f.rows)).filter(r => !(dropFar && r.far));
+  const anyBlock = all.some(r => r.block);
+  const head = COMBINE_COLS.concat(anyBlock ? ["Block"] : []);
+  const seen = new Map();
+  const lines = [head.map(csvCell).join(",")];
+  for (const r of all) {
+    let id = r.id;
+    if (uniq) {
+      const n = (seen.get(id) || 0) + 1;
+      seen.set(id, n);
+      if (n > 1) id = id + "-" + (r.color || r.type || r.src.replace(/\.[^.]*$/, "")).replace(/[^A-Za-z0-9]+/g, "");
+    }
+    const row = [id, r.n, r.e, r.z, r.color, r.type].concat(anyBlock ? [r.block] : []);
+    lines.push(row.map(csvCell).join(","));
+  }
+  return "\ufeff" + lines.join("\r\n") + "\r\n";
+}
+
+let cmbFiles = [];
+function openCombine() {
+  openPanel("Combine pile files");
+  panelRefresh = openCombine;
+  const iss = cmbFiles.length ? combineIssues(cmbFiles) : null;
+  const ok = iss && !iss.missingCols.length && iss.total > 0;
+  $("#panelBody").innerHTML = `
+    <p class="hint" style="margin:0 0 10px">The engineer sends the pile points as a stack of separate exports.
+      Drop them all in and this makes the one master sheet the tracker wants,
+      <b>${COMBINE_COLS.join(", ")}</b>. And tells you what is wrong with them before you rely on it.
+      Save each one as <b>.csv</b> first if they arrive as Excel.</p>
+    <div class="drop" id="cmbDrop">Drop the pile point <b>.csv</b> files here, all of them at once<br><br>
+      <button class="btn blue" id="cmbPick">Choose files</button></div>
+    ${cmbFiles.length ? `
+      <div class="section-title">What came in</div>
+      ${cmbFiles.map((f, i) => `<div class="lgrow" style="cursor:default;align-items:flex-start">
+        <div class="nm"><b>${esc(f.name)}</b><br>
+          <span style="font-size:11px;color:var(--bm-steel)">
+            ${f.rows.length.toLocaleString()} of ${f.total.toLocaleString()} rows ·
+            ID “${esc(f.cols.id || "none")}” · N “${esc(f.cols.n || "none")}” · E “${esc(f.cols.e || "none")}”
+            ${f.cols.z ? " · elev “" + esc(f.cols.z) + "”" : ""}<br>
+            colour <b>${esc(f.rows.length && f.rows[0].color || "not set")}</b>${f.cols.color ? " (column)" : f.guess.color ? " (from the file name)" : ""}
+            · type <b>${esc(f.rows.length && f.rows[0].type || "not set")}</b>${f.cols.type ? " (column)" : f.guess.type ? " (from the file name)" : ""}
+            ${f.guess.block ? " · block " + esc(f.guess.block) + " (from the file name)" : ""}
+            ${(f.bad.id || f.bad.coord) ? `<br><span style="color:#8B0D2A">dropped ${(f.bad.id + f.bad.coord).toLocaleString()},
+              ${f.bad.id ? f.bad.id + " with no ID" : ""}${f.bad.id && f.bad.coord ? ", " : ""}${f.bad.coord ? f.bad.coord + " with no usable coordinates" : ""}</span>` : ""}
+            ${f.far ? `<br><span style="color:#8A6200">${f.far} sit far from the rest of this file. Check for a typed coordinate</span>` : ""}
+          </span></div>
+        <button class="lyx" data-cmbrm="${i}">Remove</button></div>`).join("")}
+
+      ${(iss.noColor || iss.noType) ? `<div class="section-title">Fill in what the files did not say</div>
+        ${iss.noColor ? `<p class="hint" style="margin:0 0 6px">${iss.noColor.toLocaleString()} rows have no colour.</p>` : ""}
+        ${iss.noType ? `<p class="hint" style="margin:0 0 6px">${iss.noType.toLocaleString()} rows have no pile type.</p>` : ""}
+        ${cmbFiles.map((f, i) => (f.rows.length && (!f.rows[0].color || !f.rows[0].type)) ? `
+          <div class="field" style="margin:0 0 8px"><label>${esc(f.name)}</label>
+            <div class="grid2">
+              <input data-cmbc="${i}" placeholder="Colour" value="${esc(f.rows[0].color || "")}">
+              <input data-cmbt="${i}" placeholder="Pile type" value="${esc(f.rows[0].type || "")}">
+            </div></div>` : "").join("")}` : ""}
+
+      <div class="section-title">Before you use it</div>
+      ${iss.missingCols.length ? `<div class="lgrow" style="cursor:default"><div class="nm">
+        <b style="color:#8B0D2A">These files have no Point ID, Northing or Easting column</b><br>
+        <span style="font-size:11px;color:var(--bm-steel)">${iss.missingCols.map(esc).join(", ")}. Remove them or
+          fix the headers. Nothing will be written while they are in the list.</span></div></div>` : ""}
+      <div class="readrow"><span>Piles in the master sheet</span><b>${(iss.total - (cmbKeepFar ? 0 : iss.far)).toLocaleString()}</b></div>
+      ${iss.dropped ? `<div class="readrow"><span>Rows dropped</span><b>${iss.dropped.toLocaleString()}</b></div>` : ""}
+      ${iss.blocks ? `<div class="readrow"><span>Blocks named by the files</span><b>${iss.blocks}</b></div>` : ""}
+      <div class="readrow"><span>Duplicate Point IDs</span><b${iss.dupIds.length ? ' style="color:#8B0D2A"' : ""}>${
+        iss.dupIds.length ? iss.dupIds.length.toLocaleString() + " IDs, " + iss.dupRows.toLocaleString() + " rows" : "none"}</b></div>
+      ${iss.far ? `<div class="lgrow" id="cmbFar"><div class="chk ${!cmbKeepFar ? "on" : ""}">${!cmbKeepFar ? "✓" : ""}</div>
+        <div class="nm"><b>Leave out the ${iss.far} row${iss.far === 1 ? "" : "s"} that sit far from their own file</b><br>
+          <span style="font-size:11px;color:var(--bm-steel)">A Northing or Easting with a digit too many puts a pile
+            miles from the site and can throw off the coordinate system the tracker works out. Untick to keep them
+            and check them yourself</span></div></div>` : ""}
+      ${iss.dupIds.length ? `<div class="lgrow" id="cmbUniq"><div class="chk ${cmbUnique ? "on" : ""}">${cmbUnique ? "✓" : ""}</div>
+        <div class="nm"><b>Make the duplicates unique</b><br>
+          <span style="font-size:11px;color:var(--bm-steel)">Adds the colour or type to the repeats, so
+            ${esc(iss.dupIds[0][0])} becomes ${esc(iss.dupIds[0][0])} and ${esc(iss.dupIds[0][0])}-${esc(
+              (iss.dupIds[0][1][1].color || iss.dupIds[0][1][1].type || "2").replace(/[^A-Za-z0-9]+/g, "")) }.
+            Two piles sharing an ID look like one pile to the tracker and to any spreadsheet joined to it</span></div></div>
+        <p class="hint">Better still, ask the engineer of record for globally unique IDs on the next issue,
+          this is usually the inverter piles restarting at 1.</p>` : ""}
+    ` : ""}`;
+
+  $("#cmbPick").onclick = () => pickFiles(fl => addCombineFiles([...fl]));
+  const dz = $("#cmbDrop");
+  ["dragenter", "dragover"].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.add("hot"); }));
+  ["dragleave", "drop"].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.classList.remove("hot"); }));
+  dz.addEventListener("drop", ev => addCombineFiles([...ev.dataTransfer.files]));
+  $("#panelBody").querySelectorAll("[data-cmbrm]").forEach(n => n.onclick = () => {
+    cmbFiles.splice(+n.dataset.cmbrm, 1); openCombine();
+  });
+  $("#panelBody").querySelectorAll("[data-cmbc]").forEach(n => n.onchange = () => {
+    const f = cmbFiles[+n.dataset.cmbc]; const v = n.value.trim();
+    f.rows.forEach(r => { if (!f.cols.color) r.color = v; }); openCombine();
+  });
+  $("#panelBody").querySelectorAll("[data-cmbt]").forEach(n => n.onchange = () => {
+    const f = cmbFiles[+n.dataset.cmbt]; const v = n.value.trim();
+    f.rows.forEach(r => { if (!f.cols.type) r.type = v; }); openCombine();
+  });
+  if ($("#cmbUniq")) $("#cmbUniq").onclick = () => { cmbUnique = !cmbUnique; openCombine(); };
+  if ($("#cmbFar")) $("#cmbFar").onclick = () => { cmbKeepFar = !cmbKeepFar; openCombine(); };
+
+  $("#panelFoot").innerHTML = "";
+  const clear = el("button", "btn", "Clear");
+  clear.onclick = () => { cmbFiles = []; openCombine(); };
+  const save = el("button", "btn pri wide", "Save the master sheet");
+  save.disabled = !ok;
+  save.onclick = () => {
+    const csv = buildMasterCsv(cmbFiles, { uniqueIds: cmbUnique, keepFar: cmbKeepFar });
+    const nm = `${dayStamp(new Date())}_MASTER-pile-points.csv`;
+    saveOrShare(nm, new Blob([csv], { type: "text/csv" }));
+    const i2 = combineIssues(cmbFiles);
+    toast(i2.total.toLocaleString() + " piles from " + cmbFiles.length + " files"
+      + (cmbUnique && i2.dupIds.length ? " · duplicate IDs made unique" : ""), 4200);
+  };
+  $("#panelFoot").append(clear, save);
+}
+let cmbUnique = true, cmbKeepFar = false;
+async function addCombineFiles(fl) {
+  for (const f of fl) {
+    if (!/\.(csv|txt|tsv)$/i.test(f.name)) { toast("Skipped " + f.name + ". Save it as .csv first", 3600); continue; }
+    try { cmbFiles.push(readPileFile(f.name, await f.text())); }
+    catch (e) { toast("Could not read " + f.name); }
+  }
+  openCombine();
+}
+
+/* ============================================================
+   Standalone builds
+
+   For a trial, sending somebody a web address and a passcode is two things to explain and one
+   to forget. A standalone build is the whole thing in one file: the app, one project, and the
+   role that file is for. Email it, open it, work. Nothing to import, nothing to sign into.
+
+   The file is the credential, which is how a coordinator already hands things out. Be plain
+   about what that means: forward the coordinator file to a crew member and they have the
+   coordinator's tools. It suits a trial precisely because a trial is a small number of people
+   who all know each other, and it is the wrong answer for a hundred devices.
+   ============================================================ */
+function readBaked() {
+  const el = $("#bakedProject");
+  if (!el) return null;
+  try {
+    const j = JSON.parse(el.textContent || "null");
+    if (!j || j.fmt !== "bm-pile-pack") return null;
+    /* Two kinds of baked file. One carries a whole project — that is the coordinator's copy,
+       emailed around. The other carries only a role and no piles at all: that is the page the
+       crews open at a web address, which has to be lockable without hard-coding a job into it,
+       because the project arrives later as a pack. */
+    return (j.piles && j.piles.length) || j.lockRole ? j : null;
+  } catch (e) { return null; }
+}
+/* A baked file states its role, and that role is fixed — no sign-in, nothing to change. */
+function bakedRole() { const j = readBaked(); return j && ROLES[j.lockRole] ? j.lockRole : null; }
+function bakedProjectRows() { const j = readBaked(); return j && j.piles && j.piles.length ? j : null; }
+
+/* ---------------- crew mode ----------------
+
+   A locked-down build for one job: tap a pile, say whether it went in, flag remediation, add a
+   note, walk to the next one, export the day. Everything a coordinator needs and a crew does
+   not — layers, filters, the punch list, the progress dashboard, project files — is not hidden
+   behind a refusal, it is not in the interface at all. A refusal is still clutter, and a button
+   that never works is worse than no button.
+
+   It is a property of the build, not a setting, so nobody can tap their way out of it in a
+   truck. The single-pile panel keeps remediation because that is the crew's job; the area
+   selection does not, because a box drag that marks four hundred piles as refusals is a
+   mistake nobody wants to unpick. */
+const crewMode = () => { const j = readBaked(); return !!(j && j.crewMode && j.lockRole === "guest"); };
+const canBulkRemed = () => !crewMode();
+
+async function loadBaked(j) {
+  const built = restorePiles(j.piles, j.proj, j.design);
+  await activateProject(built, false);
+  S.ov = (await kvGet("ov")) || {};
+  S.blockRings = (j.blockRings || []).map(r => Object.assign({}, r));
+  S.blockRings.forEach(r => { if (r.ring) r.mid = labelPoint(r.ring); });
+  await kvPut("ov", S.ov);
+  await kvPut("blockRings", S.blockRings);
+  refreshKPI();
+}
+
+/* Writes a copy of this app with one project and one role sealed inside it. The app fetches
+   its own source to do it, which needs a real web address — a file opened straight off a disk
+   cannot read itself back. */
+async function exportStandalone(lockRole) {
+  if (!S.proj) return toast("Load a project first");
+  if (!/^https?:$/.test(location.protocol))
+    return modal("Needs the hosted address", `<p style="margin:0;font-size:13px">A standalone build is made by the
+      app copying its own file, and a page opened straight off a disk is not allowed to read itself.
+      Open the tracker at its web address and do this from there.</p>`,
+      [{ t: "Close", cls: "btn pri", fn: closeModal }]);
+  showBusy("Building the file", "Copying the app and sealing the project inside it…");
+  try {
+    const src = await (await fetch(location.href, { cache: "reload" })).text();
+    const j = packFile();
+    j.lockRole = lockRole;
+    j.site = S.proj.name;
+    /* a note or a pile ID containing a closing script tag would end the block early and break
+       the file — which is exactly what writing that tag in this comment did the first time */
+    const json = JSON.stringify(j).replace(/</g, "\\u003c");
+    const slot = /(<script id="bakedProject"[^>]*>)[\s\S]*?(<\/script>)/;
+    if (!slot.test(src)) { closeModal(); return toast("This build cannot hold a project. Use the current version"); }
+    const out = src.replace(slot, (m, a, b) => a + json + b);
+    const label = lockRole === "guest" ? "Crew" : "Coordinator";
+    saveOrShare(`${slug(S.proj.name)}-${label}.html`,
+      new Blob([out], { type: "text/html" }));
+    closeModal();
+    modal(label + " file built", `
+      <div class="readrow" style="border-top:0"><span>Project</span><b>${esc(S.proj.name)}</b></div>
+      <div class="readrow"><span>Piles</span><b>${S.piles.length.toLocaleString()}</b></div>
+      <div class="readrow"><span>Block outlines</span><b>${(S.blockRings || []).length}</b></div>
+      <div class="readrow"><span>Opens as</span><b>${ROLES[lockRole].label}</b></div>
+      <div class="readrow"><span>File size</span><b>${(out.length / 1048576).toFixed(1)} MB</b></div>
+      <p class="hint">Send it however you send anything else. Opening it needs no address, no import and no
+        passcode. The project and the role are inside the file. Progress is saved on whichever device opens it,
+        so each crew keeps their own and hands the day back with <b>Export status CSV</b>.<br>
+        <b>Whoever holds the file gets that role</b>, so keep the Coordinator one off the crew group chat.</p>`,
+      [{ t: "Done", cls: "btn pri", fn: closeModal }]);
+  } catch (e) {
+    closeModal();
+    toast("Could not build the file: " + (e.message || e), 4000);
+  }
+}
+
+/* The crew page. Same app, no project, sealed to crew mode — so it can be published once at a
+   web address, added to a home screen like anything else, and used on every job. The project
+   arrives as a pack, which is what makes one page enough for both sites.
+
+   Publishing this rather than emailing the crew build is what buys the home screen: iOS will
+   not install a file opened off a disk, only a page served over http. */
+async function exportCrewPage() {
+  if (!/^https?:$/.test(location.protocol))
+    return modal("Needs the hosted address", `<p style="margin:0;font-size:13px">The crew page is made by the
+      app copying its own file, and a page opened straight off a disk is not allowed to read itself.
+      Open the tracker at its web address and do this from there.</p>`,
+      [{ t: "Close", cls: "btn pri", fn: closeModal }]);
+  showBusy("Building the crew page", "Copying the app and sealing crew mode into it…");
+  try {
+    const src = await (await fetch(location.href, { cache: "reload" })).text();
+    const j = { fmt: "bm-pile-pack", v: 1, app: APP_VER, at: nowTs(), lockRole: "guest", crewMode: true, piles: [] };
+    const slot = /(<script id="bakedProject"[^>]*>)[\s\S]*?(<\/script>)/;
+    if (!slot.test(src)) { closeModal(); return toast("This build cannot be sealed. Use the current version"); }
+    /* iOS takes the home-screen label from a meta tag, not from the manifest, so without this
+       both pages would sit on the phone called "Pile Tracker" with no way to tell them apart.
+
+       Rewriting it has to be confined to the document head. A pattern written out in full here
+       also matches this very source when the app copies itself, so the first attempt corrupted
+       its own regex on the way out — the head is a few hundred bytes at the top of the file and
+       the script is a quarter of a megabyte below it, so cutting there cannot self-match. */
+    const baked = src.replace(slot, (m, a, b) => a + JSON.stringify(j) + b);
+    const cut = baked.indexOf("</head>");
+    if (cut < 0) { closeModal(); return toast("Could not read the page head"); }
+    const head = baked.slice(0, cut)
+      .replace(/(name="apple-mobile-web-app-title" content=")[^"]*/, "$1Pile Crew")
+      .replace(/(name="application-name" content=")[^"]*/, "$1Pile Crew");
+    const out = head + baked.slice(cut);
+    saveOrShare("index.html", new Blob([out], { type: "text/html" }));
+    closeModal();
+    modal("Crew page built", `
+      <div class="readrow" style="border-top:0"><span>Opens as</span><b>Guest, sealed</b></div>
+      <div class="readrow"><span>Project inside it</span><b>none, arrives as a pack</b></div>
+      <div class="readrow"><span>File size</span><b>${Math.round(out.length / 1024).toLocaleString()} KB</b></div>
+      <p class="hint">Put this in its own folder on the web host, alongside a copy of the manifest, the
+        service worker, the icons and 404.html. Send the crews that folder's address. They add it to the
+        home screen once, open the day's pack, and work from then on with no signal.<br>
+        It has no project in it, so the same page serves every job and there is nothing confidential on
+        the host.</p>`,
+      [{ t: "Done", cls: "btn pri", fn: closeModal }]);
+  } catch (e) {
+    closeModal();
+    toast("Could not build the page: " + (e.message || e), 4000);
+  }
+}
+
+/* ============================================================
+   The first screen
+
+   Three ways in, chosen on the device. Admin and Coordinator want the passcode set on this
+   device; Guest walks straight through. It is skipped entirely until a passcode exists,
+   because until then there is nothing to sign into and somebody has to be able to set the
+   first tablet up.
+   ============================================================ */
+let gateShown = false;
+function openGate(force) {
+  /* a standalone build already says which role it is for, so there is nothing to ask */
+  if (bakedRole()) return false;
+  if (!force && (gateShown || !claimed())) return false;
+  gateShown = true;
+  const last = role();
+  const el0 = $("#gate");
+  el0.innerHTML = `
+    <div class="gatebox">
+      <div class="gatelogo">BARTON MALOW</div>
+      <div class="gatetitle">Pile Installation Tracker</div>
+      <p class="gatesub">Who is using this device?</p>
+      <button class="gatebtn pri" id="gGuest">
+        <b>Guest</b><span>Install crew · no passcode needed${last === "guest" ? " · last used" : ""}</span></button>
+      <button class="gatebtn" id="gCoord">
+        <b>Coordinator</b><span>Project PM or PE${last === "coordinator" ? " · last used" : ""}</span></button>
+      <button class="gatebtn" id="gAdmin">
+        <b>Admin</b><span>LAT team${last === "admin" ? " · last used" : ""}</span></button>
+      <div class="gatecode" id="gCodeWrap" style="display:none">
+        <label id="gCodeLbl">Passcode</label>
+        <input id="gCode" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••">
+        <div class="grid2">
+          <button class="btn" id="gBack">Back</button>
+          <button class="btn pri" id="gGo">Sign in</button>
+        </div>
+        <p class="gatenote" id="gErr"></p>
+      </div>
+      <p class="gatenote">This chooses which tools this device offers. It is not an account,
+        the passcode is checked on the device itself, not against a server.</p>
+    </div>`;
+  document.body.classList.add("gate-on");
+  let want = null;
+  const ask = r => {
+    want = r;
+    $("#gCodeLbl").textContent = ROLES[r].label + " passcode";
+    $("#gCodeWrap").style.display = "";
+    $("#gErr").textContent = S.auth[r] ? "" : "No " + ROLES[r].label + " passcode is set on this device.";
+    const f = $("#gCode"); f.value = ""; if (f.focus) f.focus();
+  };
+  const enter = r => { setRole(r); document.body.classList.remove("gate-on"); toast("Signed in as " + ROLES[r].label); };
+  $("#gGuest").onclick = () => enter("guest");
+  $("#gCoord").onclick = () => ask("coordinator");
+  $("#gAdmin").onclick = () => ask("admin");
+  $("#gBack").onclick = () => { $("#gCodeWrap").style.display = "none"; want = null; };
+  $("#gGo").onclick = async () => {
+    if (!want) return;
+    const code = ($("#gCode").value || "").trim();
+    if (!code) { $("#gErr").textContent = "Enter the passcode."; return; }
+    if (await tryRole(want, code)) enter(want);
+    else { $("#gErr").textContent = "That passcode does not match."; $("#gCode").value = ""; }
+  };
+  $("#gCode").onkeydown = e => { if (e.key === "Enter") $("#gGo").onclick(); };
+  return true;
+}
+
+function openRoles() {
+  const r = role();
+  const set = k => !!S.auth[k];
+  if (bakedRole()) return modal("Who is using this device", `
+    <div class="readrow" style="border-top:0"><span>This file</span><b>${ROLES[r].label} · ${ROLES[r].who}</b></div>
+    <div class="readrow"><span>Project</span><b>${esc((S.proj && S.proj.name) || "none")}</b></div>
+    <p class="hint" style="margin:8px 0 0">${ROLES[r].can} ${ROLES[r].cannot}</p>
+    <p class="hint">This is a standalone build: the project and the role are sealed into the file itself, so there
+      is nothing to sign into and nothing to change here. If you need a different role, ask for the other file.<br>
+      Being plain about it: <b>whoever holds a file gets that role.</b> Fine for a trial among people who know each
+      other, and not how a hundred devices should be run.</p>`,
+    [{ t: "Done", cls: "btn pri", fn: closeModal }]);
+  modal("Who is using this device", `
+    <div class="readrow" style="border-top:0"><span>Right now</span><b>${ROLES[r].label} · ${ROLES[r].who}</b></div>
+    <p class="hint" style="margin:6px 0 12px">${claimed() ? ROLES[r].can + " " + ROLES[r].cannot
+      : "<b>No passcode has been set on this device yet, so nothing is held back.</b> Set one and Guest becomes "
+      + "the limited role it is meant to be. Until then anyone using this device can do anything."}</p>
+    <div class="section-title" style="margin-top:0">Sign in</div>
+    <div class="field"><label>Passcode</label>
+      <input id="rcCode" type="password" inputmode="numeric" autocomplete="off" placeholder="••••••"></div>
+    <div class="grid2">
+      <button class="btn" id="rcCoord"${set("coordinator") && r !== "coordinator" ? "" : " disabled"}>Coordinator</button>
+      <button class="btn" id="rcAdmin"${set("admin") && r !== "admin" ? "" : " disabled"}>Admin</button>
+    </div>
+    ${(!set("coordinator") && !set("admin")) ? `<p class="hint">No passcode has been set on this device yet.
+      Whoever sets it up first chooses it, <b>Set a passcode</b> below.</p>` : ""}
+    <div class="grid2" style="margin-top:8px">
+      ${r === "guest" ? "" : '<button class="btn" id="rcOut">Sign out to Guest</button>'}
+      <button class="btn" id="rcSet">${set("coordinator") || set("admin") ? "Change passcodes" : "Set a passcode"}</button>
+    </div>
+    <div class="divider"></div>
+    <div class="section-title">The three roles</div>
+    ${Object.keys(ROLES).map(k => `<div class="lgrow" style="cursor:default">
+      <div class="nm"><b>${ROLES[k].label}</b> <span style="font-size:11px;color:var(--bm-steel)">· ${ROLES[k].who}</span><br>
+        <span style="font-size:11px;color:var(--bm-steel)">${ROLES[k].can}</span></div>
+      ${k === r ? '<div class="ct">now</div>' : ""}</div>`).join("")}
+    <p class="hint"><b>Be clear about what this is.</b> It decides which tools this tablet offers, so a crew cannot
+      replace the project or wipe it by accident. It is not security: the app is one file served from a web address,
+      so anyone who can open the address already has all of it, and a passcode checked on the device can be got
+      round by somebody determined. Treat it as the lock on a site box, not as a login.</p>`,
+    [{ t: "Done", cls: "btn pri", fn: closeModal }]);
+
+  const sign = async k => {
+    const code = ($("#rcCode").value || "").trim();
+    if (!code) return toast("Enter the passcode");
+    if (await tryRole(k, code)) {
+      setRole(k); closeModal();
+      toast("Signed in as " + ROLES[k].label);
+    } else toast("That passcode does not match");
+  };
+  if ($("#rcCoord")) $("#rcCoord").onclick = () => sign("coordinator");
+  if ($("#rcAdmin")) $("#rcAdmin").onclick = () => sign("admin");
+  if ($("#rcOut")) $("#rcOut").onclick = () => {
+    setRole("guest"); closeModal();
+    toast("Back to Guest. The project is read-only from here");
+  };
+  $("#rcSet").onclick = openSetCodes;
+}
+
+function openSetCodes() {
+  const first = !S.auth.coordinator && !S.auth.admin;
+  modal("Passcodes on this device", `
+    ${first ? `<p class="hint" style="margin:0 0 12px">Nothing is set yet, so you can set both now. Do this on your
+      own laptop, then hand the tablets out in Guest and leave them there.</p>`
+      : `<p class="hint" style="margin:0 0 12px">Leave a box empty to leave that passcode as it is.</p>`}
+    <div class="field"><label>Coordinator passcode${S.auth.coordinator ? " (set)" : ""}</label>
+      <input id="scCoord" type="password" inputmode="numeric" autocomplete="off" placeholder="at least 4 characters"></div>
+    <div class="field"><label>Admin passcode${S.auth.admin ? " (set)" : ""}</label>
+      <input id="scAdmin" type="password" inputmode="numeric" autocomplete="off" placeholder="at least 4 characters"></div>
+    <p class="hint">Stored as a one-way hash on this device only, so it is not readable out of the app and does not
+      travel in any export. It is not sent anywhere and cannot be recovered. If it is forgotten, clear the app's
+      storage on that device and set it again. A short numeric code is fine for keeping a tablet out of trouble and
+      is not much use against somebody patient with the device in their hands.</p>`,
+    [{ t: "Cancel", cls: "btn", fn: closeModal },
+    {
+      t: "Save", cls: "btn pri", fn: async () => {
+        const c = ($("#scCoord").value || "").trim(), a = ($("#scAdmin").value || "").trim();
+        if (!c && !a) return toast("Nothing to save");
+        if ((c && c.length < 4) || (a && a.length < 4)) return toast("Use at least 4 characters");
+        let okAny = true;
+        if (c) okAny = await setRoleCode("coordinator", c) && okAny;
+        if (a) okAny = await setRoleCode("admin", a) && okAny;
+        if (!okAny) return toast("This browser cannot hash a passcode. Needs a secure (https) address");
+        closeModal();
+        toast("Saved on this device" + (first ? ". Sign in to use it" : ""));
+      }
+    }]);
+}
+
 function openCrew() {
   modal("This device", `
     <p class="hint" style="margin:0 0 12px">Filled in once. Every pile you record from this device is stamped with
-      these automatically — there is nothing to type on the pile itself.</p>
+      these automatically. There is nothing to type on the pile itself.</p>
     <div class="field"><label>Crew name</label>
       <input id="cCrew" value="${esc(S.dev.crew)}" placeholder="e.g. Crew 2"></div>
     <div class="field"><label>Driver / rig</label>
-      <input id="cDriver" value="${esc(S.dev.driver || "")}" placeholder="e.g. Rig 7 — Delgado"></div>
+      <input id="cDriver" value="${esc(S.dev.driver || "")}" placeholder="e.g. Rig 7, Delgado"></div>
     <div class="field"><label>Person or device name</label>
       <input id="cName" value="${esc(S.dev.name)}" placeholder="e.g. J. Ramirez / iPad 3"></div>
     <div class="divider"></div>
+    <div class="lgrow" id="cRole"><div class="nm"><b>${ROLES[role()].label}</b>
+      <span style="font-size:11px;color:var(--bm-steel)">· ${ROLES[role()].who}</span><br>
+      <span style="font-size:11px;color:var(--bm-steel)">${ROLES[role()].can}</span></div>
+      <div class="ct">▸</div></div>
     <div class="readrow"><span>Stamped on each pile</span><b>${esc(stampLine())}</b></div>
     <div class="readrow"><span>Device ID</span><b>${esc(S.dev.id)}</b></div>
     <div class="readrow"><span>App version</span><b>${APP_VER}</b></div>
-    <p class="hint">Give each crew a different crew name — that is what makes the end-of-day merge readable and
+    <p class="hint">Give each crew a different crew name. That is what makes the end-of-day merge readable and
       drives the per-driver production numbers. Change the driver here whenever the rig changes.</p>`,
     [{ t: "Cancel", cls: "btn", fn: closeModal },
     {
@@ -5122,6 +6232,7 @@ function openCrew() {
         requestDraw();
       }
     }]);
+  $("#cRole").onclick = openRoles;
 }
 
 /* ============================================================
@@ -5157,7 +6268,7 @@ function sampleSheet() {
 function requirementsBox(open) {
   return `<details class="req-box"${open ? " open" : ""}><summary>Pile spreadsheet format</summary><div>
     <p class="hint" style="margin:0 0 9px">One row per pile, with a header row on top. Row 1 must be the column
-      names — the app reads the headers, so the column order does not matter.</p>
+      names. The app reads the headers, so the column order does not matter.</p>
     ${sampleSheet()}
     <div class="section-title" style="margin-top:14px">Required</div>
     <div class="readrow"><span>Point ID</span><b>Unique per pile. Also accepts Pile ID, Point_ID, Pile_No, ID</b></div>
@@ -5167,24 +6278,24 @@ function requirementsBox(open) {
     <div class="readrow"><span>Size</span><b>Added to the type label. Also Shape, Section, Pile Size</b></div>
     <div class="readrow"><span>Top of Pile Elevation</span><b>Also TOP_Elev, Elevation, Elev</b></div>
     <div class="readrow"><span>Block</span><b>Groups the dashboard by area. Also Zone, Area, Sector</b></div>
-    <div class="readrow"><span>Pile Type</span><b>What the pile is for — sets the marker shape.
+    <div class="readrow"><span>Pile Type</span><b>What the pile is for, sets the marker shape.
       Also Type, Symbol, Use, Function, Category</b></div>
     <div class="readrow"><span>Sub-Type</span><b>Annotated next to MET piles. Also Subtype, MET Type</b></div>
     <div class="section-title">Pile Type values</div>
-    <p class="hint" style="margin:0 0 8px">One of these per row. Spelling is forgiving —
+    <p class="hint" style="margin:0 0 8px">One of these per row. Spelling is forgiving,
       “CAB Dead End”, “dead-end” and “DE” all land in the same place.</p>
     ${SYM_ORDER.map(s => `<div class="readrow"><span>${symSVG(s, "#00263A", 16)} ${SYMBOLS[s].label}</span>
       <b style="font-weight:400">${SYMBOLS[s].desc}</b></div>`).join("")}
     <p class="hint">Anything unrecognised falls back to a circle and gets listed on the review screen
-      before import, so a typo shows up rather than passing silently. No Pile Type column at all is fine —
+      before import, so a typo shows up rather than passing silently. No Pile Type column at all is fine,
       everything draws as a circle.</p>
     <p class="hint" style="margin-top:10px">
-      <b>Northing / Easting:</b> no need to say which coordinate system — the app identifies the State Plane or UTM
+      <b>Northing / Easting:</b> no need to say which coordinate system. The app identifies the State Plane or UTM
       zone and the units by checking the piles against the design geometry in the KMZ, and shows you what it found
       before importing. Feet or metres both work.<br>
       <b>Anything else in the sheet is kept.</b> Extra columns ride along, show on the pile detail panel, and come
       back out in the status CSV, so the sheet you hand the engineer keeps its original columns.<br>
-      <b>Saved as .csv</b> — in Excel, File → Save As → CSV UTF-8. Tab-separated .txt also works.</p>
+      <b>Saved as .csv</b>. In Excel, File → Save As → CSV UTF-8. Tab-separated .txt also works.</p>
   </div></details>`;
 }
 
@@ -5199,11 +6310,11 @@ function openImport() {
       </div>
       <p class="hint" id="modeHint" style="margin:0 0 10px">Adds or updates piles and design layers and keeps every
         field record. Use this for a revised layout, a new block, or to attach a spreadsheet you did not have at setup.</p>` : ""}
-    <div class="drop" id="drop">Drop files here — the pile <b>.csv</b>, plus a <b>.kmz</b> or CAD <b>.dxf</b><br><br>
+    <div class="drop" id="drop">Drop files here. The pile <b>.csv</b>, plus a <b>.kmz</b> or CAD <b>.dxf</b><br><br>
       <button class="btn blue" id="pickBtn">Choose files</button></div>
     <ul class="filelist" id="flist"></ul>
     <div class="bar" id="ibar" style="display:none"><i></i></div>
-    <p class="hint" id="istat">The KMZ carries the design — site fence, block delineations, access roads, inverters —
+    <p class="hint" id="istat">The KMZ carries the design, site fence, block delineations, access roads, inverters,
       and the CSV carries the piles. Either can be loaded on its own, and you can add the other later.</p>
     ${requirementsBox(!has)}
     ${has ? `<div class="divider"></div><div class="section-title">Loaded now</div>
@@ -5212,11 +6323,15 @@ function openImport() {
       <div class="readrow"><span>Point layers</span><b>${S.pLayers.size}</b></div>
       <div class="readrow"><span>Design shapes</span><b>${S.design.length.toLocaleString()}</b></div>
       <div class="readrow"><span>Field records</span><b>${Object.keys(S.ov).filter(k => S.ov[k].ts).length.toLocaleString()}</b></div>
+      <div class="lgrow" id="impComb" style="margin-top:8px"><div class="nm"><b>Combine the engineer\u2019s pile files</b><br>
+        <span style="font-size:11px;color:var(--bm-steel)">Turn a stack of per-colour exports into the one master
+          sheet this tracker wants, and see what is wrong with them first</span></div><div class="ct">\u25b8</div></div>
       <div class="lgrow" id="impOff" style="margin-top:8px"><div class="nm"><b>Take something back off</b><br>
         <span style="font-size:11px;color:var(--bm-steel)">Remove one layer that went in by mistake, or clear
           the device and start over</span></div><div class="ct">▸</div></div>` : ""}`,
     [{ t: "Cancel", cls: "btn", fn: closeModal }, { t: "Import", cls: "btn pri", id: "goImp", fn: runImport }]);
   pendingFiles = [];
+  if ($("#impComb")) $("#impComb").onclick = () => { closeModal(); showHome(false); openCombine(); };
   if ($("#impOff")) $("#impOff").onclick = () => { closeModal(); showHome(false); openLayers(); };
   const drop = $("#drop");
   $("#pickBtn").onclick = () => { $("#filePick").click(); };
@@ -5279,7 +6394,7 @@ function dxfToDesign(dxf, anchor) {
   const crs = cands && cands.length ? cands[0] : null;
   if (!crs) return { error: "Could not work out the drawing's coordinate system. It may be on a local site grid rather than State Plane." };
   if (anchor && crs.frac < 0.5 && crs.miss > 5000)
-    return { error: "The drawing does not line up with the piles — best guess " + crsLabel(crs) + " puts it " + offBy(crs.miss) + " away.", cands: cands };
+    return { error: "The drawing does not line up with the piles, best guess " + crsLabel(crs) + " puts it " + offBy(crs.miss) + " away.", cands: cands };
 
   const conv = (x, y) => { const g = invert(crs.zone, x * crs.unit.f, y * crs.unit.f); return [g.lon, g.lat]; };
   const design = [], blocks = [];
@@ -5434,7 +6549,7 @@ function joinCSV(parsed, cs, fileName) {
         note = `${added.toLocaleString()} piles placed from Northing/Easting as ${crsLabel(crs)}`
           + (anchor ? `, landing ${crs.miss < 1000 ? Math.round(crs.miss) + " m" : (crs.miss / 1000).toFixed(1) + " km"} from the centre of the design geometry` : "");
       } else if (cands && cands.length) {
-        note = `Could not confirm the coordinate system for ${leftover.length.toLocaleString()} rows — `
+        note = `Could not confirm the coordinate system for ${leftover.length.toLocaleString()} rows, `
           + `the closest match, ${crsLabel(cands[0])}, puts the piles ${(cands[0].miss / 1000).toFixed(0)} km from the design. Pick the right one below`;
       } else {
         note = `Those Northing/Easting values do not match any US State Plane or UTM zone. `
@@ -5450,19 +6565,19 @@ function joinCSV(parsed, cs, fileName) {
           parsed.piles.push({ g: fileName, lat: g.lat, lon: g.lon, ex: L.row }); added++;
         }
         note = `${added.toLocaleString()} sheet-only piles placed from Northing/Easting, using a transform fitted to `
-          + `${T.n.toLocaleString()} shared points — fit residual ${T.rms.toFixed(3)} m, worst ${T.max.toFixed(3)} m`;
+          + `${T.n.toLocaleString()} shared points, fit residual ${T.rms.toFixed(3)} m, worst ${T.max.toFixed(3)} m`;
       } else if (T) {
-        note = `Northing/Easting was not reliable enough to trust — best fit residual was ${T.rms.toFixed(1)} m, `
+        note = `Northing/Easting was not reliable enough to trust. Best fit residual was ${T.rms.toFixed(1)} m, `
           + `so ${leftover.length.toLocaleString()} sheet-only rows were left out. Check that the sheet's coordinates and the KMZ are the same datum`;
       } else {
-        note = `${leftover.length.toLocaleString()} sheet-only rows could not be georeferenced — needs at least 3 rows that also exist in the KMZ`;
+        note = `${leftover.length.toLocaleString()} sheet-only rows could not be georeferenced. Needs at least 3 rows that also exist in the KMZ`;
       }
     } else {
       note = `${leftover.length.toLocaleString()} sheet rows had no matching Point ID in the KMZ and no coordinates of their own`;
     }
   }
   if (ambiguous) note = (note ? note + ". " : "")
-    + `${ambiguous.toLocaleString()} sheet rows matched more than one pile because that Point ID repeats across KMZ layers — applied to all of them, and excluded from the coordinate fit`;
+    + `${ambiguous.toLocaleString()} sheet rows matched more than one pile because that Point ID repeats across KMZ layers, applied to all of them, and excluded from the coordinate fit`;
   return {
     matched, added, ambiguous, leftover: leftover.length, ctrl: ctrl.length,
     T, note, crs, crsOptions, cn, ce, hasId: ci >= 0, rows: leftover
@@ -5591,10 +6706,10 @@ function offerBlockSetup() {
   const n = S.blockRings.length, un = S.blockRings.filter(r => !r.name).length;
   modal("Block outlines loaded", `
     <p style="margin:0 0 10px;font-size:13px">Found <b>${n}</b> closed block outline${n === 1 ? "" : "s"}${S.piles.length ? ", covering "
-      + S.blockRings.reduce((a, r) => a + (r.n || 0), 0).toLocaleString() + " piles" : ""}${un < n ? " — <b>" + un + "</b> still without a number" : ""}.</p>
+      + S.blockRings.reduce((a, r) => a + (r.n || 0), 0).toLocaleString() + " piles" : ""}${un < n ? ", <b>" + un + "</b> still without a number" : ""}.</p>
     <p class="hint" style="margin:0 0 10px">The block numbers in a CAD export are drawn as line work rather than text,
       so they cannot be read automatically. The set-up screen zooms to one outline at a time with the drawing on screen,
-      so you read the number off it and type it in — then every pile inside gets that block.</p>`,
+      so you read the number off it and type it in. Then every pile inside gets that block.</p>`,
     [{ t: "Later", cls: "btn", fn: closeModal },
     { t: "Label them now", cls: "btn pri", fn: () => { closeModal(); showHome(false); openBlockSetup(); } }]);
 }
@@ -5611,7 +6726,7 @@ function reportBlockAssign() {
     </tbody></table>
     ${r.unmatched ? `<p class="hint">The ones outside every boundary keep whatever block they already had.
       If that number looks too high, the drawing may not cover the whole site, or those boundaries may not be closed
-      polylines — CAD often leaves a tiny gap that stops a shape counting as enclosed.</p>` : ""}`,
+      polylines. CAD often leaves a tiny gap that stops a shape counting as enclosed.</p>` : ""}`,
     [{ t: "Done", cls: "btn pri", fn: closeModal }]);
 }
 function reportUnknownSymbols() {
@@ -5673,7 +6788,7 @@ function reviewImport(parsed, name, zip, joins, adding, cad) {
      device, and it looks exactly like a normal import until the totals come out wrong. If the
      incoming geometry is nowhere near what is already loaded, say so before it goes in. */
   const away = adding ? milesApart(parsed) : 0;
-  modal(adding ? "Review — adding to " + name : "Review import", `
+  modal(adding ? "Review, adding to " + name : "Review import", `
     ${away > 3 ? `<div style="border:2px solid var(--bm-orange);background:rgba(227,82,5,.07);
       border-radius:var(--radius-lg);padding:10px;margin:0 0 10px">
       <b style="font-family:var(--font-sub);font-size:14px">This looks like a different site</b>
@@ -5697,7 +6812,7 @@ function reviewImport(parsed, name, zip, joins, adding, cad) {
         ${j.crsOptions && j.crsOptions.length ? `<div class="field" style="margin:6px 0 10px">
           <label>Coordinate system of the Northing/Easting columns</label>
           <select data-crs="${i}">${j.crsOptions.map((c, ci) =>
-      `<option value="${ci}"${c === j.crs ? " selected" : ""}>${esc(crsLabel(c))}${c.miss ? " — " + (c.miss < 1000 ? Math.round(c.miss) + " m" : (c.miss / 1000).toFixed(0) + " km") + " off the design" : ""}</option>`).join("")}</select>
+      `<option value="${ci}"${c === j.crs ? " selected" : ""}>${esc(crsLabel(c))}${c.miss ? ", " + (c.miss < 1000 ? Math.round(c.miss) + " m" : (c.miss / 1000).toFixed(0) + " km") + " off the design" : ""}</option>`).join("")}</select>
           </div>` : ""}
         <p class="hint" style="margin:2px 0 8px">Columns: ${esc(j.cols.join(", "))}</p>`).join("")}` : ""}
     ${cad ? `<div class="section-title">CAD drawing</div>
@@ -5753,7 +6868,7 @@ function reviewImport(parsed, name, zip, joins, adding, cad) {
           const before = adding ? { p: S.piles.length, d: S.design.length } : { p: 0, d: 0 };
 
           const built = await buildProject(name, parsed, zip, roles, keepColors);
-          if (!built.piles.length && !built.design.length) throw new Error("Nothing left to import — every layer was set to Ignore.");
+          if (!built.piles.length && !built.design.length) throw new Error("Nothing left to import. Every layer was set to Ignore.");
           lastUnknownSym = built.unknownSym;
           const doBlocks = cad && cad.blocks && cad.blocks.length && cadApplyOn;
           if (adding) {                     // same project, next revision
@@ -5788,7 +6903,7 @@ function reviewImport(parsed, name, zip, joins, adding, cad) {
               <div class="readrow"><span>New design shapes</span><b>${dd.toLocaleString()}</b></div>
               <div class="readrow"><span>Total piles now</span><b>${S.piles.length.toLocaleString()}</b></div>
               <div class="readrow"><span>Field records kept</span><b>${Object.keys(S.ov).filter(k => S.ov[k].ts).length.toLocaleString()}</b></div>
-              <p class="hint">Revision ${built.proj.rev}. Crew sync files from before this still merge — the project identity is unchanged.
+              <p class="hint">Revision ${built.proj.rev}. Crew sync files from before this still merge. The project identity is unchanged.
                 ${dp ? "Send everyone a fresh <b>Morning update</b> so the new piles reach the tablets." : ""}</p>`,
               [{
                 t: "Done", cls: "btn pri", fn: () => {
@@ -5862,7 +6977,7 @@ function exportMorning() {
   j.dev = { id: "master", name: "Master tracker", crew: S.dev.crew || "" };
   const nm = `${dayStamp(new Date())}_${slug(S.proj.name)}_MORNING-UPDATE.pilesync.json`;
   saveOrShare(nm, new Blob([JSON.stringify(j)], { type: "application/json" }));
-  toast(Object.keys(j.records).length.toLocaleString() + " records — send this to every tablet");
+  toast(Object.keys(j.records).length.toLocaleString() + " records. Send this to every tablet");
 }
 function exportBackup() {
   if (!S.proj) return toast("Load a project first");
@@ -5885,7 +7000,7 @@ function joinNotes(win, lose) {
   const a = (win.nt || "").trim(), b = (lose.nt || "").trim();
   if (!b || a === b || (a && a.indexOf(b) >= 0)) return a;
   const who = lose.cr || lose.byName || lose.by || "other crew";
-  return (a ? a + "\n" : "") + "— " + who + ": " + b;
+  return (a ? a + "\n" : "") + who + ": " + b;
 }
 /* Merge one incoming record into one local record, each half independently.
    `only` limits which halves the source is allowed to speak for — a CSV that has
@@ -5997,7 +7112,7 @@ function showMergeReport(s) {
     </div>
     ${s.mismatch.length ? `<p class="hint" style="color:#8B0D2A"><b>Warning:</b> ${esc(s.mismatch.join(", "))} came from a different pile file than the one loaded here. Records that do not match a pile were skipped.</p>` : ""}
     <ul class="filelist">${s.files.map(f => `<li><b>${esc(f.n)}</b><span class="badge badge-blue">${esc(f.s)}</span></li>`).join("")}</ul>
-    ${s.conflicts.length ? `<div class="divider"></div><div class="section-title">Conflicts — newest edit kept</div>
+    ${s.conflicts.length ? `<div class="divider"></div><div class="section-title">Conflicts. Newest edit kept</div>
       <table class="bm-table"><thead><tr><th>Pile</th><th>Kept from</th><th>Kept</th><th>Overwritten</th></tr></thead><tbody>${rows}</tbody></table>
       <p class="hint">Notes from the overwritten record were appended to the pile's notes so nothing is lost.</p>` : ""}`,
     [{ t: "Done", cls: "btn pri", fn: closeModal }]);
@@ -6385,7 +7500,7 @@ function openDashboard() {
     <div class="readrow"><span>Remediation rate</span><b>${t.done ? (t.remTot / t.done * 100).toFixed(1) : "0.0"}%</b></div>
     <div class="readrow"><span>Working days recorded</span><b>${P.installDays.length}</b></div>
     <div class="readrow"><span>Average per day</span><b>${Math.round(P.avg).toLocaleString()}</b></div>
-    <div class="readrow"><span>Projected days remaining</span><b>${etaDays == null ? "—" : etaDays.toLocaleString()}</b></div>
+    <div class="readrow"><span>Projected days remaining</span><b>${etaDays == null ? "not yet" : etaDays.toLocaleString()}</b></div>
 
     <div class="divider"></div>
     <div class="section-title">Remediation</div>
@@ -6415,7 +7530,7 @@ function openDashboard() {
 
     <div class="section-title">Driver production</div>
     ${perDriverDay ? `<table class="bm-table"><thead><tr><th>Driver / rig</th><th>Total</th><th>Avg/day</th><th>Best day</th><th>Last day</th></tr></thead>
-      <tbody>${perDriverDay}</tbody></table>` : '<p class="hint">No driver recorded yet — crews should fill in the Driver field.</p>'}
+      <tbody>${perDriverDay}</tbody></table>` : '<p class="hint">No driver recorded yet. Crews should fill in the Driver field.</p>'}
 
     <div class="section-title">By block</div>
     <table class="bm-table"><thead><tr><th>Block</th><th>Installed</th><th>Total</th><th>%</th></tr></thead><tbody>
@@ -6450,36 +7565,100 @@ async function openSync() {
   const tc = await tileCount();
   let done = 0, rem = 0;
   for (const k in S.ov) { if (S.ov[k].st) done++; if (S.ov[k].rm) rem++; }
+
+  /* The crew version of this screen. The coordinator's has eleven buttons on it, most of them
+     about handing work out and merging it back; a crew needs to send the day in, take a new
+     pack, and save the imagery before they lose signal. Nothing else. */
+  if (crewMode()) {
+    modal("End of day", `
+      <div class="readrow" style="border-top:0"><span>Project</span><b>${S.proj ? esc(S.proj.name) : "none"}</b></div>
+      <div class="readrow"><span>Crew</span><b>${esc(S.dev.crew || "not set")}</b></div>
+      <div class="readrow"><span>Recorded on this device</span><b>${recs.toLocaleString()}</b></div>
+      <div class="readrow"><span>Installed / flagged</span><b>${done.toLocaleString()} / ${rem.toLocaleString()}</b></div>
+      <div class="readrow"><span>Connection</span><b>${navigator.onLine ? "online" : "offline. Everything still works"}</b></div>
+
+      <div class="divider"></div>
+      <div class="section-title">Send the day in</div>
+      <div class="big" style="grid-template-columns:1fr 1fr">
+        <button class="bigbtn gsel" id="sExp">Export my day</button>
+        <button class="bigbtn" id="sCsv2">Export status CSV</button>
+      </div>
+      <p class="hint">Send either one to your coordinator once you are back on WiFi. <b>Export my day</b>
+        is the small file that merges cleanly with the other crews, so send that one if you only send one.
+        The CSV is the layout sheet with a Status column, which is the one a person can read in Excel.
+        Sending both is fine.</p>
+
+      <div class="section-title">Start from the latest progress</div>
+      <button class="bigbtn ysel" id="sNewPack" style="width:100%">Open a new pack</button>
+      <p class="hint">The file your coordinator sends out in the morning. It brings in what every other
+        crew did. Your own records are kept and merged, never overwritten, but export your day first
+        anyway so the office has a copy.</p>
+
+      <div class="section-title">Offline map</div>
+      <div class="readrow"><span>Tiles saved on this device</span><b>${tc.toLocaleString()}</b></div>
+      <button class="btn" id="sPre" style="width:100%">Save the map for this area</button>
+      <div class="bar" id="pbar" style="display:none"><i></i></div>
+      <p class="hint">Do this in the trailer while you still have signal. It saves the satellite picture
+        for whatever is on screen so the map still draws out in the field. The piles themselves never
+        need a connection.</p>`,
+      [{ t: "Close", cls: "btn", fn: closeModal }]);
+    $("#sExp").onclick = exportDay;
+    $("#sCsv2").onclick = () => exportCSV(false);
+    $("#sNewPack").onclick = () => { closeModal(); pickPack(); };
+    $("#sPre").onclick = async () => {
+      const bar = $("#pbar"); bar.style.display = "";
+      const r = await precacheTiles(2, (i, n) => { bar.firstElementChild.style.width = Math.round(i / n * 100) + "%"; });
+      toast(r ? r.ok.toLocaleString() + " of " + r.total.toLocaleString() + " tiles ready offline" : "Nothing to cache");
+    };
+    return;
+  }
+
   modal("Sync & reports", `
-    <div class="readrow"><span>Project</span><b>${S.proj ? esc(S.proj.name) : "—"}</b></div>
+    <div class="readrow"><span>Project</span><b>${S.proj ? esc(S.proj.name) : "none"}</b></div>
     <div class="readrow"><span>Crew</span><b>${esc(S.dev.crew || "not set")}</b></div>
     <div class="readrow"><span>Records on this device</span><b>${recs.toLocaleString()}</b></div>
     <div class="readrow"><span>Installed / remediation</span><b>${done.toLocaleString()} / ${rem.toLocaleString()}</b></div>
-    <div class="readrow"><span>Connection</span><b>${navigator.onLine ? "online" : "offline — everything still works"}</b></div>
+    <div class="readrow"><span>Connection</span><b>${navigator.onLine ? "online" : "offline. Everything still works"}</b></div>
 
     <div class="divider"></div>
-    <div class="section-title">Crew — end of day</div>
+    <div class="section-title">Crew, end of day</div>
     <div class="big" style="grid-template-columns:1fr 1fr">
       <button class="bigbtn gsel" id="sExp">Export my day</button>
       <button class="bigbtn" id="sCsv2">Export status CSV</button>
     </div>
     <p class="hint">Send either file in once you are back on WiFi. The CSV is the layout sheet with the
-      <b>Status</b> column filled in — that is the one the engineer can read. The <b>.pilesync</b> file carries a little more
+      <b>Status</b> column filled in. That is the one the engineer can read. The <b>.pilesync</b> file carries a little more
       (edit times per pile) so merges resolve conflicts more precisely. Sending both is fine.</p>
 
-    <div class="section-title">Pile PE — master tracker</div>
+    <div class="section-title">Coordinator, setting the tablets up</div>
+    <button class="bigbtn ysel" id="sPack" style="width:100%;margin-bottom:10px">Crew pack. Hand the project to a tablet</button>
+    ${can("project") && !bakedRole() ? `<div class="grid2" style="margin-bottom:10px">
+      <button class="btn" id="sStandC" style="height:44px;font-size:12px">Build Coordinator file</button>
+      <button class="btn" id="sStandG" style="height:44px;font-size:12px">Build Crew file</button></div>
+      <p class="hint" style="margin:0 0 10px">One HTML file with this project and one role sealed inside it,
+        nothing to import, no address, no passcode. For a trial: email the Crew file to the install crews and the
+        Coordinator file to the project team. Whoever holds a file gets that role.</p>
+      <button class="btn" id="sCrewPage" style="width:100%;height:44px;font-size:12px;margin-bottom:10px">Build the hosted crew page</button>
+      <p class="hint" style="margin:0 0 10px">The other way round: no project inside, sealed to the field tools only,
+        meant to be published at a web address so the crews can add it to a home screen. One page serves every job.
+        Emailed files cannot be added to a home screen, which is the only reason to host anything.</p>` : ""}
+    <p class="hint" style="margin:0 0 10px">One file with the layout, the drawing, the block numbers and the progress
+      so far. Send it to each tablet however you already send things, email, AirDrop, Teams, a USB stick. The tablet
+      opens it once, comes up as <b>Guest</b> with the project loaded, and works from then on with no signal.
+      Send a fresh one whenever you want the crews to start from the latest progress.</p>
+    <div class="section-title">Coordinator, end of day</div>
     <div class="big" style="grid-template-columns:1fr 1fr">
       <button class="bigbtn" id="sImp">1 · Merge crew files</button>
       <button class="bigbtn ysel" id="sMorn">2 · Morning update</button>
     </div>
-    <p class="hint">Pick every crew file at once — CSVs, .pilesync files, or a mix. Newest edit per pile wins and
+    <p class="hint">Pick every crew file at once, CSVs, .pilesync files, or a mix. Newest edit per pile wins and
       overwritten notes get appended, so nothing is lost. Then send the <b>Morning update</b> back out to every tablet
       and each crew merges it before heading out, so they start where the whole job left off.</p>
 
     <div class="divider"></div>
     <div class="section-title">Report</div>
     <button class="btn pri" id="sXls" style="width:100%">Export the remediation log (Excel)</button>
-    <p class="hint">One workbook — a sheet per block plus Inverter Pile, in the format the project already uses:
+    <p class="hint">One workbook. A sheet per block plus Inverter Pile, in the format the project already uses:
       Point / Color / TYPE, with the remediation written into TYPE.</p>
     <div class="section-title">Backup</div>
     <div class="grid2">
@@ -6502,8 +7681,12 @@ async function openSync() {
 
   $("#sExp").onclick = exportDay;
   $("#sCsv2").onclick = () => exportCSV(false);
-  $("#sMorn").onclick = exportMorning;
-  $("#sImp").onclick = () => pickFiles(fl => importSync([...fl]));
+  $("#sPack").onclick = () => gate("packs", "Making a crew pack", exportGuestPack);
+  if ($("#sStandC")) $("#sStandC").onclick = () => gate("project", "Building a standalone file", () => exportStandalone("coordinator"));
+  if ($("#sStandG")) $("#sStandG").onclick = () => gate("project", "Building a standalone file", () => exportStandalone("guest"));
+  if ($("#sCrewPage")) $("#sCrewPage").onclick = () => gate("project", "Building the crew page", exportCrewPage);
+  $("#sMorn").onclick = () => gate("packs", "Making a morning update", exportMorning);
+  $("#sImp").onclick = () => gate("merge", "Merging crew files", () => pickFiles(fl => importSync([...fl])));
   $("#sXls").onclick = exportRemediationLog;
   $("#sBak").onclick = exportBackup;
   $("#sRes").onclick = () => pickFiles(async fl => {
@@ -6514,7 +7697,7 @@ async function openSync() {
       const built = restorePiles(j.piles, j.proj, j.design);
       await activateProject(built, false);
       S.ov = j.ov || {}; await kvPut("ov", S.ov); refreshKPI();
-      closeModal(); toast("Backup restored — " + S.piles.length.toLocaleString() + " piles");
+      closeModal(); toast("Backup restored, " + S.piles.length.toLocaleString() + " piles");
     } catch (e) { toast("Restore failed: " + e.message); }
   });
   $("#sPre").onclick = async () => {
@@ -6525,7 +7708,7 @@ async function openSync() {
   $("#sClr").onclick = async () => {
     for (const p of Object.keys(PROV)) await tileDelPrefix(p + "/");
     memTiles.forEach((v, k) => { if (k.indexOf("ov:") !== 0) memTiles.delete(k); });
-    toast("Basemap tiles cleared — drone imagery kept"); requestDraw();
+    toast("Basemap tiles cleared. Drone imagery kept"); requestDraw();
   };
 }
 function pickFiles(cb) {
@@ -6538,7 +7721,7 @@ function offerPrecache() {
   modal("Save the map for offline use?", `<p style="margin:0 0 10px">You are online now. Downloading the satellite imagery for this site
     means the map still draws when the crews lose signal.</p>
     <div class="bar" id="pbar2" style="display:none"><i></i></div>
-    <p class="hint">Roughly 5–30 MB for a solar site. You can redo this any time from Sync → Offline map imagery.</p>`,
+    <p class="hint">Roughly 5 to 30 MB for a solar site. You can redo this any time from Sync → Offline map imagery.</p>`,
     [{ t: "Not now", cls: "btn", fn: closeModal },
     {
       t: "Download", cls: "btn pri", fn: async () => {
@@ -6666,11 +7849,11 @@ function openBasemap() {
   modal("Basemap", Object.keys(PROV).map(k =>
     `<div class="lgrow" data-p="${k}"><div class="chk ${S.base === k ? "on" : ""}">${S.base === k ? "✓" : ""}</div>
      <div class="nm">${esc(PROV[k].name)}</div><div class="ct">${k === "none" ? "no download" : "cached offline"}</div></div>`).join("")
-    + `<p class="hint">Satellite is best for finding a row in the field. "No basemap" is the fastest and needs nothing cached — pile geometry alone reads clearly at close zoom.</p>`,
+    + `<p class="hint">Satellite is best for finding a row in the field. "No basemap" is the fastest and needs nothing cached. Pile geometry alone reads clearly at close zoom.</p>`,
     [{ t: "Done", cls: "btn pri", fn: closeModal }]);
   $("#modalBody").querySelectorAll("[data-p]").forEach(n => n.onclick = () => {
     S.base = n.dataset.p; saveSettings(); closeModal(); requestDraw();
-    if (S.base !== "none" && !navigator.onLine) toast("Offline — only imagery already cached will show");
+    if (S.base !== "none" && !navigator.onLine) toast("Offline. Only imagery already cached will show");
   });
 }
 
@@ -6687,7 +7870,7 @@ function openImagery() {
       <div class="lgrow" data-tog="${o.id}" style="border:0;padding:0 0 6px;background:none">
         <div class="chk ${o.on ? "on" : ""}">${o.on ? "✓" : ""}</div>
         <div class="nm"><b>${esc(o.name)}</b><br><span style="font-size:10px;color:var(--bm-steel)">
-          ${o.kind === "xyz" ? "Live tile service" : "Stored on this device"} · z${o.minz}–${o.maxz}${o.flight ? " · " + esc(o.flight) : ""}</span></div>
+          ${o.kind === "xyz" ? "Live tile service" : "Stored on this device"} · z${o.minz} to ${o.maxz}${o.flight ? " · " + esc(o.flight) : ""}</span></div>
       </div>
       <label style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--bm-steel);font-weight:700">Opacity <span id="opv${i}">${Math.round((o.op == null ? 1 : o.op) * 100)}%</span></label>
       <input type="range" min="10" max="100" value="${Math.round((o.op == null ? 1 : o.op) * 100)}" data-op="${o.id}" data-i="${i}" style="width:100%">
@@ -6702,7 +7885,7 @@ function openImagery() {
 
   $("#panelBody").innerHTML = `
     <div class="readrow"><span>Basemap</span><b>${esc(PROV[S.base].name)}</b></div>
-    <p class="hint" style="margin-top:6px">Satellite imagery is the default basemap. Drone flights layer on top of it — newest flight at the top of this list draws last.</p>
+    <p class="hint" style="margin-top:6px">Satellite imagery is the default basemap. Drone flights layer on top of it. Newest flight at the top of this list draws last.</p>
     <div class="divider"></div>
     <div class="section-title">Drone / survey flights</div>
     ${rows || '<p class="hint" style="margin-top:0">No drone imagery added yet.</p>'}
@@ -6831,7 +8014,7 @@ async function resolveDDPlan(id, key) {
   if (!r.ok) throw new Error("DroneDeploy returned " + r.status + ".");
   const j = await r.json();
   const tpl = findTemplate(j);
-  if (!tpl) throw new Error("That project has no orthomosaic tiles yet — the 2D map may still be processing.");
+  if (!tpl) throw new Error("That project has no orthomosaic tiles yet. The 2D map may still be processing.");
   return tpl;
 }
 
@@ -6842,15 +8025,15 @@ function addOverlayLink() {
       <textarea id="ddIn" style="min-height:64px" placeholder="https://www.dronedeploy.com/app2/sites/…/maps/…"
         autocapitalize="off" autocomplete="off" spellcheck="false"></textarea></div>
     <p class="hint" style="margin:0 0 10px">Open the map in DroneDeploy and copy the address bar. A plan ID, a
-      <code>{z}/{x}/{y}</code> tile URL, or the JSON from the tiles endpoint all work here too — it works out which
+      <code>{z}/{x}/{y}</code> tile URL, or the JSON from the tiles endpoint all work here too. It works out which
       one you gave it.</p>
-    <details class="req-box"${haveKey ? "" : " open"}><summary>DroneDeploy API key ${haveKey ? "— saved on this device" : "— needed once"}</summary><div>
+    <details class="req-box"${haveKey ? "" : " open"}><summary>DroneDeploy API key ${haveKey ? ", saved on this device" : ", needed once"}</summary><div>
       <div class="field"><label>API key</label>
         <input id="ddKey" value="${esc(S.dev.ddKey || "")}" placeholder="paste the key from Account Preferences"
           autocapitalize="off" autocomplete="off" spellcheck="false"></div>
       <p class="hint" style="margin:0">DroneDeploy dashboard → <b>Account Preferences</b> → <b>Generate</b> → Copy.
         Enterprise accounts with admin or owner permission only. Saved on this device so you only paste a link next time.
-        Treat it like a password — put it on the office device, not every tablet.</p>
+        Treat it like a password. Put it on the office device, not every tablet.</p>
     </div></details>
     <div class="field" style="margin-top:12px"><label>Layer name</label>
       <input id="ddName" placeholder="e.g. Drone flight ${dayStamp(new Date())}"></div>
@@ -6874,7 +8057,7 @@ async function runAddDD() {
 
   let template = parsed.url;
   if (parsed.kind === "plan") {
-    if (!key) return toast("Add the API key once — open the section above");
+    if (!key) return toast("Add the API key once. Open the section above");
     const btn = $("#ddGo"); if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
     stat("Asking DroneDeploy for this project's tiles…");
     try {
@@ -6902,14 +8085,14 @@ function addXyzOverlay(template, nameIn) {
     bounds: S.proj ? projLatLonBox() : null, added: nowTs()
   });
   saveSettings(); closeModal(); openImagery(); requestDraw();
-  toast("Imagery added — pan the map to load it, then Save offline");
+  toast("Imagery added. Pan the map to load it, then Save offline");
 }
 
 /* If the browser will not let us call the API directly (a local file has no origin,
    so DroneDeploy may refuse), the user can fetch it themselves in one tab. */
 function ddManualFallback(planId, url, nameIn) {
   modal("One tab to open", `
-    <p style="margin:0 0 10px;font-size:13px">This device cannot call the DroneDeploy API directly — that is normal
+    <p style="margin:0 0 10px;font-size:13px">This device cannot call the DroneDeploy API directly. That is normal
       when the tracker runs as a local file. Open this address in a browser tab, copy everything it shows, and paste
       it back below. It only has to be done once per flight.</p>
     <div class="field"><label>1 · Open this</label>
@@ -6918,7 +8101,7 @@ function ddManualFallback(planId, url, nameIn) {
     <div class="field"><label>2 · Paste what came back</label>
       <textarea id="ddJson" style="min-height:70px" placeholder='{"templates": {"orthomosaic": "https://…{z}/{x}/{y}?token=…"}}'
         autocapitalize="off" spellcheck="false"></textarea></div>
-    <p class="hint">It will be a wall of text. Select all of it — the app picks out the orthomosaic template.</p>`,
+    <p class="hint">It will be a wall of text. Select all of it. The app picks out the orthomosaic template.</p>`,
     [{ t: "Cancel", cls: "btn", fn: closeModal },
     {
       t: "Add imagery", cls: "btn pri", fn: () => {
@@ -6945,7 +8128,7 @@ function addOverlayUrl() {
       <div class="field"><label>Max zoom</label><input id="ovMax" value="21" inputmode="numeric"></div>
     </div>
     <p class="hint">In DroneDeploy this is the <b>Tile Template API</b>: <code>GET /v2/tiles/{plan_id}?api_key=…</code> returns an
-      <code>orthomosaic</code> template that already has <code>{z}/{x}/{y}</code> in it — paste it here as-is. The token lasts about
+      <code>orthomosaic</code> template that already has <code>{z}/{x}/{y}</code> in it. Paste it here as-is. The token lasts about
       18 months. Any other XYZ service works too (ArcGIS tile services, Propeller, Pix4D Cloud).
       Tiles are cached as you pan; tap <b>Save offline</b> afterwards to pull the whole site down.</p>`,
     [{ t: "Cancel", cls: "btn", fn: closeModal },
@@ -6960,7 +8143,7 @@ function addOverlayUrl() {
           op: 1, on: true, bounds: S.proj ? projLatLonBox() : null, added: nowTs()
         });
         saveSettings(); closeModal(); openImagery(); requestDraw();
-        toast("Layer added — pan the map to load tiles");
+        toast("Layer added. Pan the map to load tiles");
       }
     }]);
 }
@@ -7002,7 +8185,7 @@ async function addOverlayFiles(arr) {
           return askBounds(typeof File === "function" ? new File([b], nm, { type: b.type }) : Object.assign(b, { name: nm }));
         }
         throw new Error("That archive has no .kml and no image in it. In DroneDeploy, export the 2D Map as "
-          + "JPG in Web Mercator (EPSG:3857) — that export includes the .kml the app needs to place the imagery.");
+          + "JPG in Web Mercator (EPSG:3857). That export includes the .kml the app needs to place the imagery.");
       }
       gos = parseGroundOverlays(await (await archive.blob(kn)).text());
       getImg = async href => {
@@ -7029,12 +8212,12 @@ async function addOverlayFiles(arr) {
     }
 
     if (!gos.length) throw new Error("No GroundOverlay found in that KML. In DroneDeploy, export the 2D Map as JPG "
-      + "with the coordinate system set to Web Mercator (EPSG:3857) — the KML only comes with that projection.");
+      + "with the coordinate system set to Web Mercator (EPSG:3857). The KML only comes with that projection.");
     if (gos.some(g => Math.abs(g.rotation) > 0.01)) toast("Note: overlay rotation is ignored");
 
     const id = newOvId();
     let box = null, minz = 99, maxz = 0, total = 0;
-    showBusy("Building map tiles", "Reprojecting the ortho — this runs once per device.");
+    showBusy("Building map tiles", "Reprojecting the ortho. This runs once per device.");
     for (let i = 0; i < gos.length; i++) {
       const g = gos[i];
       const blob = await getImg(g.href);
@@ -7052,7 +8235,7 @@ async function addOverlayFiles(arr) {
     S.overlays.unshift(o);
     saveSettings();
     closeModal(); openImagery(); fitBounds(boundsRect(box), 30); requestDraw();
-    toast(total.toLocaleString() + " imagery tiles built · z" + minz + "–" + maxz);
+    toast(total.toLocaleString() + " imagery tiles built · zoom " + minz + " to " + maxz);
   } catch (e) {
     closeModal();
     modal("Could not add that imagery", `<p style="margin:0 0 8px"><b>${esc(e.message || e)}</b></p>
@@ -7072,7 +8255,7 @@ function askBounds(imgFile) {
       <div class="field"><label>West longitude</label><input id="bW" value="${b.w.toFixed(7)}" inputmode="decimal"></div>
       <div class="field"><label>East longitude</label><input id="bE" value="${b.e.toFixed(7)}" inputmode="decimal"></div>
     </div>
-    <p class="hint">Prefilled with the pile extents plus a margin, which is usually close for a site flight — adjust to the real values.</p>`,
+    <p class="hint">Prefilled with the pile extents plus a margin, which is usually close for a site flight, adjust to the real values.</p>`,
     [{ t: "Cancel", cls: "btn", fn: closeModal },
     {
       t: "Build tiles", cls: "btn pri", fn: async () => {
@@ -7082,7 +8265,7 @@ function askBounds(imgFile) {
           return toast("Those corner coordinates do not make sense");
         try {
           const id = newOvId();
-          showBusy("Building map tiles", "Reprojecting the image — this runs once per device.");
+          showBusy("Building map tiles", "Reprojecting the image. This runs once per device.");
           const r = await sliceToTiles(id, imgFile, box, (a, t) => busyProg(a / t));
           S.overlays.unshift({
             id, name: nm, kind: "img", url: null, minz: r.minz, maxz: r.maxz,
@@ -7124,7 +8307,7 @@ $("#btnFilter").onclick = openFilters;
 $("#btnLegend").onclick = () => S.piles.length ? openLegend() : toast("Load a project first");
 $("#btnCrew").onclick = openCrew;
 $("#btnSync").onclick = () => S.proj ? openSync() : toast("Load a project first");
-$("#btnImport").onclick = openImport;
+$("#btnImport").onclick = () => gate("project", "Loading or changing project files", openImport);
 $("#btnImport2").onclick = openImport;
 $("#btnBase").onclick = openBasemap;
 $("#btnZoomIn").onclick = () => setZoom(zoomLevel() + 1);
@@ -7151,36 +8334,68 @@ function showHome(on) {
 const atHome = () => document.body.classList.contains("home-on");
 
 let tileCountCache = 0;
+/* Opening the pack the coordinator sent is the first thing a crew device ever does and the
+   first thing it does most mornings, so it is reachable from the home screen and from the menu
+   rather than only from one of them. */
+function pickPack() {
+  pickFiles(async fl => {
+    const f = fl[0]; if (!f) return;
+    try {
+      const j = JSON.parse(await f.text());
+      if (await openPack(j)) return;
+      if (j.fmt === "bm-pile-backup") {
+        const built = restorePiles(j.piles, j.proj, j.design);
+        await activateProject(built, false);
+        S.ov = j.ov || {}; await kvPut("ov", S.ov); refreshKPI();
+        toast("Backup restored, " + S.piles.length.toLocaleString() + " piles");
+        showHome(false);
+      } else toast("That is a crew sync file, load the project first, then merge it under Sync");
+    } catch (e) { toast("Could not read that file"); }
+  });
+}
 function renderHome() {
   const b = $("#homeBody");
   if (!S.proj) {
+    /* A crew page has no project of its own and no business building one, so it says the one
+       thing it needs to say rather than offering three routes that all end in a refusal. */
+    if (crewMode()) {
+      b.innerHTML = `
+        <div class="home-proj">Pile Installation Tracker</div>
+        <div class="home-sub">Waiting for the day's pack</div>
+        <div class="tiles" style="grid-template-columns:1fr">
+          <button class="tile pri" id="hRestore"><b>Open the pack</b>
+            <span>The file your coordinator sent. Open it once and the whole site is on this
+              device, with no signal needed after that.</span></button>
+          <button class="tile" id="hCrew"><b>Set the crew name</b>
+            <span>${esc([S.dev.crew, S.dev.driver].filter(Boolean).join(" \u00b7 ") || "Not set yet. This is what stamps every pile you record.")}</span></button>
+          <button class="tile" id="hHelp"><b>How to use this</b>
+            <span>Tap a pile, say whether it went in, flag remediation, move to the next one.</span></button>
+        </div>
+        <p class="home-foot">Everything is stored on this device and works with no signal.</p>`;
+      $("#hRestore").onclick = pickPack;
+      $("#hCrew").onclick = () => { showHome(false); openCrew(); };
+      $("#hHelp").onclick = openHelp;
+      return;
+    }
     b.innerHTML = `
       <div class="home-proj">Pile Installation Tracker</div>
       <div class="home-sub">Nothing loaded on this device yet</div>
       <div class="tiles" style="grid-template-columns:1fr">
-        <button class="tile pri" id="hImport"><b>Load a project</b>
-          <span>Import the design KMZ and the pile spreadsheet. Takes a minute, and only has to be done once per device.</span></button>
-        <button class="tile" id="hRestore"><b>Restore a backup</b>
-          <span>Already have a full backup or a morning update from the pile PE? Load it here.</span></button>
+        <button class="tile ${can("project") ? "pri" : ""}" id="hImport"><b>Load a project</b>
+          <span>${can("project") ? "Import the design KMZ and the pile spreadsheet. Takes a minute, and only has to be done once per device."
+        : "Building a project from the engineer's files is an Admin job. If a coordinator has sent you a pack, open it below."}</span></button>
+        ${can("project") ? `<button class="tile" id="hCombine"><b>Combine the engineer\u2019s pile files</b>
+          <span>Several per-colour exports in, one master sheet out, checked before you rely on it.</span></button>` : ""}
+        <button class="tile" id="hRestore"><b>Open a crew pack or backup</b>
+          <span>Sent a pack by the coordinator? Open it here. The project loads and this device comes up as Guest.</span></button>
         <button class="tile" id="hHelp"><b>How it works</b>
           <span>The daily routine, what the colours mean, and how the crews sync at the end of the day.</span></button>
       </div>
       <p class="home-foot">Everything is stored on this device and works with no signal.</p>`;
-    $("#hImport").onclick = openImport;
+    $("#hImport").onclick = () => gate("project", "Loading or changing project files", openImport);
     $("#hHelp").onclick = openHelp;
-    $("#hRestore").onclick = () => pickFiles(async fl => {
-      const f = fl[0]; if (!f) return;
-      try {
-        const j = JSON.parse(await f.text());
-        if (j.fmt === "bm-pile-backup") {
-          const built = restorePiles(j.piles, j.proj, j.design);
-          await activateProject(built, false);
-          S.ov = j.ov || {}; await kvPut("ov", S.ov); refreshKPI();
-          toast("Backup restored — " + S.piles.length.toLocaleString() + " piles");
-          showHome(false);
-        } else toast("That is a crew sync file — load the project first, then merge it under Sync");
-      } catch (e) { toast("Could not read that file"); }
-    });
+    if ($("#hCombine")) $("#hCombine").onclick = () => { showHome(false); openCombine(); };
+    $("#hRestore").onclick = pickPack;
     return;
   }
 
@@ -7197,22 +8412,33 @@ function renderHome() {
     if (el2) el2.textContent = n.toLocaleString();
   }).catch(() => { });
 
+  /* The crew home screen is four things: how much is left, get on the map, send the day in,
+     who is recording. No punch list, no dashboard, no layers, no project data — those are the
+     coordinator's, and a crew screen that shows them is a crew screen nobody reads. */
+  const crew = crewMode();
   b.innerHTML = `
     <div class="home-proj">${esc(S.proj.name)}</div>
     <div class="home-sub">${S.piles.length.toLocaleString()} piles · ${S.design.length.toLocaleString()} design shapes
       ${S.proj.rev ? " · revision " + S.proj.rev : ""}</div>
     <div class="home-bar"><i style="width:${pct}%"></i></div>
     <div class="home-sub">${t.done.toLocaleString()} installed · ${t.open.toLocaleString()} to go</div>
-    <div class="home-stats">
+    <div class="home-stats"${crew ? ` style="grid-template-columns:repeat(3,1fr)"` : ""}>
       <div class="home-stat accent"><b>${pct}%</b><span>Complete</span></div>
       <div class="home-stat"><b>${today ? today.in : 0}</b><span>Today</span></div>
       <div class="home-stat"><b>${t.remOpen.toLocaleString()}</b><span>Remediate</span></div>
-      <div class="home-stat"><b>${Math.round(P.avg).toLocaleString()}</b><span>Avg / day</span></div>
+      ${crew ? "" : `<div class="home-stat"><b>${Math.round(P.avg).toLocaleString()}</b><span>Avg / day</span></div>`}
     </div>
-    <div class="tiles">
+    <div class="tiles"${crew ? ` style="grid-template-columns:1fr"` : ""}>
       <button class="tile pri" id="hMap"><b>Open the map</b>
         <span>Record piles. ${t.open.toLocaleString()} still to install.</span></button>
-      <button class="tile ${t.remOpen ? "pri" : ""}" id="hPunch"><b>Punch list</b>
+      ${crew ? `<button class="tile ${pending ? "pri" : ""}" id="hSync"><b>Export the day</b>
+        <span>${pending ? pending.toLocaleString() + " records on this device. Send them in when you are back on WiFi."
+          : "Nothing recorded on this device yet."}</span></button>
+      <button class="tile" id="hRestore"><b>Open a new pack</b>
+        <span>Loads the latest progress from the whole job. Export your day first.</span></button>
+      <button class="tile" id="hHelp2"><b>How to use this</b>
+        <span>Tap a pile, say whether it went in, flag remediation, move to the next one.</span></button>`
+      : `<button class="tile ${t.remOpen ? "pri" : ""}" id="hPunch"><b>Punch list</b>
         <span>${t.remOpen ? t.remOpen.toLocaleString() + " open remediation item" + (t.remOpen > 1 ? "s" : "") + " to work." : "No open remediation items."}</span></button>
       <button class="tile" id="hDash"><b>Progress</b>
         <span>Production by driver and by day, remediation, block breakdown.</span></button>
@@ -7223,7 +8449,7 @@ function renderHome() {
       <button class="tile" id="hData"><b>Project data</b>
         <span>${S.proj ? "Add a revised layout or spreadsheet, or take an import back off." : "Load the layout KMZ and the pile spreadsheet."}</span></button>
       <button class="tile" id="hHelp2"><b>How it works</b>
-        <span>The daily routine and what the map colours mean.</span></button>
+        <span>The daily routine and what the map colours mean.</span></button>`}
     </div>
     <div class="home-crew">
       <span class="lbl">Crew</span><span class="val">${esc(S.dev.crew || "not set")}</span>
@@ -7231,19 +8457,21 @@ function renderHome() {
       <button class="btn" id="hCrew" style="height:38px;margin-left:auto;font-size:12px">Change</button>
     </div>
     <p class="home-foot">
-      ${navigator.onLine ? "Online" : "Offline — recording works exactly the same"} ·
+      ${navigator.onLine ? "Online" : "Offline. Recording works exactly the same"} ·
       <span id="homeTiles">${tileCountCache.toLocaleString()}</span> map tiles saved on this device ·
       ${pending ? pending.toLocaleString() + " field records" : "no field records yet"}<br>
       Barton Malow · Pile Installation Tracker ${APP_VER}
     </p>`;
-  $("#hMap").onclick = () => showHome(false);
-  $("#hPunch").onclick = () => { showHome(false); openPunch(); };
-  $("#hDash").onclick = () => { showHome(false); openDashboard(); };
-  $("#hSync").onclick = () => { showHome(false); openSync(); };
-  $("#hImg").onclick = () => { showHome(false); S.piles.length || S.design.length ? openLayers() : openImagery(); };
-  $("#hData").onclick = openImport;
-  $("#hHelp2").onclick = openHelp;
-  $("#hCrew").onclick = openCrew;
+  const on = (id, fn) => { const n = $(id); if (n) n.onclick = fn; };
+  on("#hMap", () => showHome(false));
+  on("#hPunch", () => { showHome(false); openPunch(); });
+  on("#hDash", () => { showHome(false); openDashboard(); });
+  on("#hSync", () => { showHome(false); openSync(); });
+  on("#hImg", () => { showHome(false); S.piles.length || S.design.length ? openLayers() : openImagery(); });
+  on("#hData", () => gate("project", "Loading or changing project files", openImport));
+  on("#hRestore", pickPack);
+  on("#hHelp2", openHelp);
+  on("#hCrew", openCrew);
 }
 $("#btnHome").onclick = () => showHome(true);
 $(".header-logo").onclick = () => { if (S.proj) showHome(!atHome()); };
@@ -7252,67 +8480,135 @@ function openHelp() {
   modal("How to use this", `
     <div class="section-title">Getting around</div>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
-      The <b>house button</b> at the left of the toolbar — or tapping the Barton Malow logo — goes back to the
+      The <b>house button</b> at the left of the toolbar. Or tapping the Barton Malow logo. Goes back to the
       home screen, which shows progress at a glance and leads to everything else. From there,
       <b>Open the map</b> returns you to recording piles.<br>
-      <b>On a phone</b> the toolbar carries only the two things used minute to minute — search and
-      <b>Multi-Select</b> — and everything else sits behind <b>Menu</b>. <b>Label the blocks</b> is a row of its own
+      <b>On a phone</b> the toolbar carries only the two things used minute to minute, search and
+      <b>Multi-Select</b>. And everything else sits behind <b>Menu</b>. <b>Label the blocks</b> is a row of its own
       there, with a count of how many outlines still need a number, rather than being buried at the foot of the
       Legend. Menu has room to tell you what each row holds: how many remediation items are open, how much of the map is hidden, how many records are waiting to
       be sent in. The map buttons are trimmed to the compass, zoom and your location, because ten of them ran
       most of the way up a phone screen. Nothing was taken away: the basemap and drone imagery moved into
       <b>Layers</b>, zoom-to-all and this help page into <b>Menu</b>, and nearest-pile is a double-tap on the
       location button. A tablet still shows the lot.<br>
-      Long panels fold. A heading with a <b>▾</b> on it — Survey detail on a pile, the colour key in the Legend —
+      Long panels fold. A heading with a <b>▾</b> on it, such as Survey detail on a pile or the colour key in the Legend,
       opens and closes on a tap, so what you act on is what you see first. They start open on a tablet.</p>
+    <div class="section-title">Recording a pile on a phone</div>
+    <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
+      Everything about a pile fits on a tablet at once. On a phone the same panel is a screenful to scroll while
+      you are standing over the hole, so it is asked as four short questions instead:
+      <b>Is it in?</b> → <b>Anything wrong with it?</b> → <b>Anything to note?</b> → <b>Recorded</b>, with a
+      <b>Next pile</b> button at the end.<br>
+      <b>Every answer is saved the moment you tap it</b>, exactly as the full panel does. Walk away halfway
+      through and what you answered is recorded. The steps are a way of asking, never a form you have to finish.
+      <b>Skip ▸</b> moves past a question without answering it and <b>‹</b> goes back.<br>
+      <b>Not installed</b> jumps straight to notes, because a pile that is not in has nothing to remediate.
+      If you are inspecting rather than driving, <b>Only recording an issue</b> on the first question takes you to
+      the remediation choices without touching the install record, so flagging a pile never overwrites what the
+      driving crew put on it.<br>
+      <b>Show all</b> at the top right brings the whole panel back on a phone if you want it, including
+      Survey detail, ＋Sel and Show only this block, and there is a link to return to the questions.
+      Walking a row is left alone. That is the fast path, still one button per pile.</p>
     <div class="section-title">Working down a row</div>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
       Open any pile in the row and, at the top of the panel, tap the arrow for <b>the way you are heading</b>.
-      From then on the big orange button records the pile <b>and moves you to the next one</b> along the row —
+      From then on the big orange button records the pile <b>and moves you to the next one</b> along the row,
       one tap per pile, no hunting for the next dot. A dashed orange line on the map points at the pile you are
       heading for, so you can look up and know which one it means.<br>
       <b>Skip ▸</b> steps past a pile without recording it, <b>‹</b> goes back one, and <b>⇄ Turn around</b>
       reverses. At the end of a row the next tap steps across to the row beside you and turns you round,
-      the way you would walk it — or tap <b>Next row</b> whenever you want to move over early.
+      the way you would walk it, or tap <b>Next row</b> whenever you want to move over early.
       <b>Installed / No issues</b> sets what the big button records, so the driving crew and the person
       inspecting for remediation each get their own one-tap. <b>Stop</b> puts the panel back to normal.<br>
       The direction is remembered between piles and between shifts, and the app works out which way the rows
-      run from the layout itself — nothing to set up.</p>
+      run from the layout itself. Nothing to set up.</p>
     <div class="section-title">Day to day</div>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
       <b>Tap a pile</b> to open it, then hit <b>Installed</b>. Add a remediation flag and notes if something went wrong.<br>
-      <b>Multi-Select</b> then drag to mark a whole row or section at once — the fastest way to keep up with a rig.
+      <b>Multi-Select</b> then drag to mark a whole row or section at once. The fastest way to keep up with a rig.
       The pill at the top of the map counts the piles <b>as you drag</b>, switches between <b>Box</b> and <b>Lasso</b>
       for irregular areas, and between <b>Add</b> and <b>Remove</b>. Tapping a pile toggles just that one;
       <b>×</b> clears everything.<br>
-      <b>How many piles are in this area, and how much is done?</b> Draw round it and tap <b>Summary</b> — piles in the
+      <b>How many piles are in this area, and how much is done?</b> Draw round it and tap <b>Summary</b>, piles in the
       area, percent complete, what is left, remediation by type, and a breakdown per block. For whole blocks by name
       (say Alpha through Echo) use <b>Blocks</b> in that panel, or Filters → Count piles in an area.<br>
       <b>Location</b> (the target button) shows where you are standing; double-tap it to open the pile nearest to you.<br>
       The <b>compass</b> at the top of the map buttons: the map is always drawn north-up and never turns, so north
-      is straight up — the red point and the <b>N</b> mark it. The orange needle is the way you are heading while
+      is straight up. The red point and the <b>N</b> mark it. The orange needle is the way you are heading while
       walking a row, or the way your last few location fixes travelled. <b>Tap the compass</b> and it brings in the
       tablet's own compass as a grey needle: hold the tablet so that needle points up and the map lines up with
       the ground in front of you. Magnetic readings wander near steel and machinery, so treat the grey needle as
       a rough guide, not a survey instrument.<br>
       <b>Filters</b> → "Not in" leaves only the piles still to drive, which makes end-of-shift sweeps quick.<br>
-      <b>Too much on screen?</b> Open any pile and tap <b>Show only this block</b>. The rest of the site goes away —
+      <b>Too much on screen?</b> Open any pile and tap <b>Show only this block</b>. The rest of the site goes away,
       less to read on a bright screen, and the map moves noticeably better on a tablet with ten thousand points on it.
       The <b>Filters</b> button turns orange whenever anything is hidden, so a part-finished map is never mistaken
       for the whole picture, and tapping it shows what is being held back. Focus clears when the app is next
       opened, so nobody inherits somebody else's filter.</p>
     <div class="section-title">If you tap the wrong thing</div>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
-      An orange <b>↶</b> button appears on the map as soon as there is something to undo — tap it to reverse the last
+      An orange <b>↶</b> button appears on the map as soon as there is something to undo. Tap it to reverse the last
       change, and keep tapping to walk back further. A whole bulk edit undoes in one tap, however many piles it covered,
       and so does merging a crew file. <b>Press and hold</b> the same button to redo. On a keyboard it is
       <b>Ctrl+Z</b> (or Cmd+Z) and <b>Ctrl+Shift+Z</b> to redo.<br>
       It covers install, remediation, notes and merges. It does not undo importing a layout, and it resets when the
-      app is closed — so it is for catching mistakes in the moment, not a substitute for a backup.</p>
+      app is closed. So it is for catching mistakes in the moment, not a substitute for a backup.</p>
+    <div class="section-title">Who can do what on a device</div>
+    <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
+      Three roles, set on this device under <b>Crew</b>. <b>Guest</b> is the field default and needs no sign-in: it
+      records piles, walks rows, filters and focuses the map and exports the day, and it cannot change the project
+      underneath. <b>Coordinator</b> runs one project, blocks, layers, merging crew files, reports and packs.
+      <b>Admin</b> also builds a project from the engineer's files and can clear a device.<br>
+      A device with no passcode on it is unclaimed and nothing is held back, so the first person setting up a tablet
+      can load the project. Set a passcode and Guest becomes the limited role it is meant to be. Do that on your own
+      machine, then hand tablets out in Guest and leave them there.<br>
+      <b>What this is, plainly.</b> It decides which tools a tablet offers, so a crew cannot replace the project,
+      relabel the blocks or wipe the device by accident. <b>It is not security.</b> The app is one file served from a
+      web address. Anyone who can open the address already has all of it, and a passcode checked on the device can
+      be got round by somebody determined. It is the lock on a site box, not a login. Passcodes are stored one-way on
+      the device, are never sent anywhere, never appear in an export, and cannot be recovered if forgotten.<br>
+      <b>What it is not yet.</b> A passcode is set on <i>a device</i>, not given to <i>a person</i>. There is no
+      account to hand out, nothing that follows somebody to a tablet they have not touched, and no central copy of a
+      project that appears when they sign in. All of that needs a server to check people against and to hold the
+      projects. A separate piece of work, and a conversation with Barton Malow IT. Until then the project travels as
+      a file and the passcode guards the tablet.</p>
+    <div class="section-title">Combining the engineer\u2019s pile files</div>
+    <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
+      <b>Data \u2192 Combine the engineer\u2019s pile files</b>, or the same tile on the home screen before a project
+      is loaded. Drop in every export at once \u2014 on Silver Creek that is seventeen files, one per colour and block
+      \u2014 and it writes the single master sheet the tracker wants:
+      <b>Pile ID, Northing, Easting, TOP Elevation, Color, Pile Type</b>, plus <b>Block</b> whenever the file names
+      knew it, which saves labelling the blocks by hand later. Save each file as <b>.csv</b> first if they arrive as
+      Excel.<br>
+      <b>It reads the file names.</b> The colour is usually in the name rather than in a column, and so is the block,
+      and sometimes the type \u2014 <i>Blocks30-31_Red.csv</i> gives colour Red and block 30-31,
+      <i>ALL INVERTER PILE.csv</i> gives the type. A name mentioning several types guesses nothing and asks you
+      instead, which is the honest answer for a file called <i>CAB_DCD_MET</i>.<br>
+      <b>It checks the result before you rely on it.</b> Every row it cannot use is counted and explained rather
+      than quietly dropped: no Point ID, no usable coordinates, or a file whose headers are not a pile sheet at all
+      \u2014 and while such a file is in the list nothing can be saved. A Northing or Easting with a digit too many
+      lands the pile miles from the site and is left out by default, with the count shown and a tick to keep it.<br>
+      <b>Duplicate Point IDs are the one to watch.</b> The inverter piles usually restart at 1, which on Silver Creek
+      makes 542 IDs that belong to two different piles \u2014 and two piles sharing an ID look like one pile to the
+      tracker and to any spreadsheet joined to it. The repeats are renamed with their colour or type by default.
+      Better still, ask the engineer of record for globally unique IDs on the next issue.</p>
+    <div class="section-title">Handing a project to the crews</div>
+    <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
+      <b>Sync → Crew pack</b>. One file with the layout, the drawing, the block numbers and the progress so far.
+      Send it to each tablet however you already send things, email, AirDrop, Teams, a USB stick. On the tablet,
+      open it from the home screen: the project loads, the block numbers come with it, and the tablet comes up as
+      <b>Guest</b>. Set the crew name under <b>Crew</b> and it is ready.<br>
+      Send a fresh pack whenever you want the crews starting from the latest progress, first morning of the job,
+      after a layout revision, or any morning you would rather not rely on each tablet merging its own update.
+      For the ordinary day, <b>Merge crew files</b> then <b>Morning update</b> is lighter: it carries the records
+      only, not the whole project.<br>
+      A crew pack can be opened by any device, on purpose. The engineer's KMZ and spreadsheet cannot. Building a
+      project stays with Admin. A finished project being handed over is the one thing a crew tablet has to be able
+      to accept on its own.</p>
     <div class="section-title">Taking an import back off</div>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
-      A device holds <b>one project at a time</b>. If two sites get loaded into the same one — easy to do by
-      choosing "Add" instead of "Start a new project" — the pile count and percent complete cover both together,
+      A device holds <b>one project at a time</b>. If two sites get loaded into the same one. Easy to do by
+      choosing "Add" instead of "Start a new project". The pile count and percent complete cover both together,
       which is wrong for either. The import screen now warns you when the incoming files sit miles away from what
       is already loaded, but if it has already happened there are two ways out.<br>
       <b>Remove one layer.</b> <b>Layers → Show a Remove button on each layer</b>, then Remove on the ones that
@@ -7320,62 +8616,62 @@ function openHelp() {
       is rebuilt from what is left.<br>
       <b>Block numbers go with their blocks.</b> Removing the outlines layer takes every outline and every number
       on the map with it. Removing a pile layer takes the numbers off any outline that has nothing left inside it,
-      and says how many — an outline with no piles in it is not a block on this project any more, and its number
+      and says how many. An outline with no piles in it is not a block on this project any more, and its number
       would otherwise sit on bare ground. Outlines that still have piles inside are always left alone, and the
       block number already written onto a pile is never touched: it stays on the pile, in the panel, and in the
       Excel log whatever happens to the boundary it came from.<br>
       <b>One outline at a time.</b> <b>Layers → Label the blocks</b>, tap the outline on the map, then
-      <b>Remove this outline</b>. The piles inside it stay exactly as they are, records and all — only the
+      <b>Remove this outline</b>. The piles inside it stay exactly as they are, records and all, only the
       boundary and its number go. And if numbers are already sitting on empty ground from a file taken off
       earlier, Layers offers to sweep them in one tap.<br>
       <b>Start over.</b> <b>Layers → Start over on this device</b>, or <b>Data → Take something back off</b>.
       That erases the project and every record on it, so it asks twice and offers a full backup on the way past.
       Saved satellite imagery and drone flights are kept unless you tick them, and your crew name, device name
-      and driver are always kept. Neither one can be undone — undo covers what a crew taps on a pile, not what a
-      file put on the device — so if the day\'s work has not been sent in yet, export it first.</p>
-    <div class="section-title">Layers — turning things off</div>
+      and driver are always kept. Neither one can be undone. Undo covers what a crew taps on a pile, not what a
+      file put on the device. So if the day\'s work has not been sent in yet, export it first.</p>
+    <div class="section-title">Layers, turning things off</div>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
       <b>Layers</b> in the toolbar lists everything the project was built from, each with its own switch:
       every <b>pile point layer</b> exactly as it was brought in (each survey file or KMZ folder is its own row,
       with the count and the colour most of its piles are drawn in), the <b>line work</b> out of the KMZ or CAD
-      file broken out by what it is — site fence, block boundaries, access roads, inverters — <b>block numbers</b>,
+      file broken out by what it is, site fence, block boundaries, access roads, inverters, <b>block numbers</b>,
       the <b>background</b> map, and any <b>drone flights</b>.<br>
       Switching a layer off hides its piles from the map, from tapping and from box-select, so what you can see and
       what you can record always agree. It changes nothing that has been recorded, and every pile still comes out in
-      the exports — a layer switch is for reading the map, never for the record.<br>
+      the exports. A layer switch is for reading the map, never for the record.<br>
       <b>All off</b> on the pile points leaves just the drawing, which is the quickest way to check an outline against
       the imagery. The <b>Filters</b> button turns orange whenever anything at all is hidden, and <b>Everything on</b>
       at the bottom of Layers puts it all back. Layer switches reset when the app is next opened, so nobody inherits
       somebody else's half-hidden map.</p>
     <div class="section-title">Reading the map</div>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
-      The <b>fill colour</b> is the pile spec — colour and size from the layout, and the <b>marker shape</b> is the pile type (array, motor, CAB, DCD, MET). The <b>outline</b> is progress:
+      The <b>fill colour</b> is the pile spec, colour and size from the layout, and the <b>marker shape</b> is the pile type (array, motor, CAB, DCD, MET). The <b>outline</b> is progress:
       grey = nothing recorded, <b style="color:#4A7228">green = installed, no remediation</b>,
       <b style="color:#8B0D2A">red with an orange centre = remediation required</b>,
       green with a small orange centre = remediated. Zoomed right out the rings are dropped so the
-      type colours stay readable — if you want progress across the whole site at a glance, switch
+      type colours stay readable. If you want progress across the whole site at a glance, switch
       <b>Legend → Colour the dots by → Status</b>. Site fence, blocks, roads and equipment draw
       underneath and can be switched off in <b>Legend</b> too.</p>
     <div class="section-title">On an iPad</div>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
       ${isStandalone()
-      ? "This iPad is running it as an installed app — full screen, opens from the home screen, works with no signal."
+      ? "This iPad is running it as an installed app. Full screen, opens from the home screen, works with no signal."
       : `To get it on the home screen as its own app: open the hosted address in <b>Safari</b>, tap the
          <b>Share</b> button, then <b>Add to Home Screen</b>. It then opens full screen with no browser bars.<br>
-         If instead you were emailed the file and saved it to <b>Files</b>, it still works completely — you just
+         If instead you were emailed the file and saved it to <b>Files</b>, it still works completely. You just
          open it from Files each time rather than from an icon.`}<br>
       <b>If the icon opens to a "404 not found"</b> but the address still works in Safari, the icon is holding an
       old address: an icon remembers where it was created from, and keeps asking for that even after the site
       moves. Press and hold the icon, delete it, open the address in Safari and add it again. Nothing recorded on
-      the device is lost by doing that — the project and every record stay where they are.</p>
+      the device is lost by doing that. The project and every record stay where they are.</p>
     <div class="section-title">Imagery</div>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
       Satellite is the default background, and <b>Layers → Background</b> switches it for Topo, Street or nothing at all.
-      <b>Layers → Add drone imagery</b> puts your DroneDeploy flights on top, with an opacity slider per flight — the eye
+      <b>Layers → Add drone imagery</b> puts your DroneDeploy flights on top, with an opacity slider per flight. The eye
       button on the map flips them all on and off at once. Newest flight sits at the top of the list.</p>
     <div class="section-title">Offline</div>
     <p style="margin:0 0 10px;font-size:13px;line-height:1.55">
-      Everything is stored on the device — no signal needed. Before heading out, open <b>Sync → Download this view</b>
+      Everything is stored on the device, no signal needed. Before heading out, open <b>Sync → Download this view</b>
       once so the satellite imagery is saved too, and <b>Save offline</b> on each drone layer.</p>
     <div class="section-title">The daily loop</div>
     <p style="margin:0;font-size:13px;line-height:1.55">
@@ -7432,7 +8728,7 @@ addEventListener("keydown", e => {
    look like it worked and then bring the old project back on the next launch. */
 function lsFallback() {
   kvGet = async k => { try { const v = localStorage.getItem("bmpt:" + k); return v ? JSON.parse(v) : undefined; } catch (e) { return undefined; } };
-  kvPut = async (k, v) => { try { localStorage.setItem("bmpt:" + k, JSON.stringify(v)); } catch (e) { toast("Storage full — export a backup now"); } };
+  kvPut = async (k, v) => { try { localStorage.setItem("bmpt:" + k, JSON.stringify(v)); } catch (e) { toast("Storage full. Export a backup now"); } };
   kvDel = async k => { try { localStorage.removeItem("bmpt:" + k); } catch (e) { } };
   tileGet = async () => null; tilePut = () => { }; tileCount = async () => 0;
   tileClear = async () => { }; tileDelPrefix = async () => { }; tileEach = async () => { };
@@ -7451,9 +8747,9 @@ async function init() {
   addEventListener("online", () => {
     setNet();
     memTiles.forEach((v, k) => { if (v === "fail") memTiles.delete(k); });
-    toast("Back online — imagery will refresh"); requestDraw();
+    toast("Back online. Imagery will refresh"); requestDraw();
   });
-  addEventListener("offline", () => { setNet(); toast("Offline — recording continues normally"); });
+  addEventListener("offline", () => { setNet(); toast("Offline, recording continues normally"); });
   setNet();
 
   const st = await kvGet("settings");
@@ -7465,8 +8761,12 @@ async function init() {
     if (st.colorBy) S.colorBy = st.colorBy;
     if (st.showBlockNames != null) S.showBlockNames = !!st.showBlockNames;
     if (st.walk) S.walk = Object.assign(S.walk, st.walk);
+    if (st.auth) S.auth = st.auth;
+    if (st.role && ROLES[st.role]) S.role = st.role;
     if (Array.isArray(st.overlays)) S.overlays = st.overlays;
   }
+  /* set before anything renders, so no coordinator tool ever flashes up on a crew page */
+  document.body.classList.toggle("crew", crewMode());
   $("#btnOv").classList.toggle("on", S.overlays.some(o => o.on));
   updateCrewBtn();
   updateSelBar();
@@ -7477,6 +8777,27 @@ async function init() {
 
   const proj = await kvGet("proj");
   const rows = await kvGet("piles");
+  /* A standalone build carries its own project. Load it the first time the file is opened, or
+     if the device is holding a different one — but not on every launch, or the day's records
+     would be thrown away with it. Matching on the project fingerprint tells the two apart. */
+  /* only a build with a project in it takes this path. A crew page carries a role and nothing
+     else, so it falls through and waits for a pack like any other empty device. */
+  const baked = bakedProjectRows();
+  if (baked && (!proj || proj.fp !== baked.proj.fp)) {
+    await loadBaked(baked);
+    if (baked.lockRole) { S.role = baked.lockRole; saveSettings(); }
+    fitBounds(S.proj.bounds, 50);
+    updateRoleBadge();
+    if (!S.dev.crew) setTimeout(openCrew, 600);
+    if (S.dev.gpsOn) setTimeout(() => toggleGps(true), 400);
+    setInterval(saveSettings, 15000);
+    addEventListener("beforeunload", saveSettings);
+    if (location.protocol === "http:" || location.protocol === "https:") {
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => { });
+    }
+    requestDraw();
+    return;
+  }
   if (proj && rows && rows.length) {
     const built = restorePiles(rows, proj, await kvGet("design"));
     S.proj = built.proj; S.piles = built.piles; S.types = built.types; S.blocks = built.blocks;
@@ -7490,11 +8811,15 @@ async function init() {
     $("#emptyState").style.display = "none";
     if (st && st.view && st.view.sc) { S.view = st.view; } else fitBounds(S.proj.bounds, 50);
     refreshKPI();
-    if (!S.dev.crew) setTimeout(openCrew, 500);
+    if (!S.dev.crew && !claimed()) setTimeout(openCrew, 500);
   } else {
     fitBounds({ wx0: .2, wx1: .8, wy0: .2, wy1: .8 }, 20);
-    showHome(true);          // nothing loaded yet — start on the hub
+    showHome(true);          // nothing loaded yet. Start on the hub
   }
+  /* the first screen goes up once we know whether this device has a passcode on it, and only
+     then — an unclaimed device has nothing to sign into and has to stay usable */
+  openGate(false);
+  updateRoleBadge();
   if (S.dev.gpsOn && S.proj) setTimeout(() => toggleGps(true), 400);   // was on last time
   setInterval(saveSettings, 15000);
   addEventListener("beforeunload", saveSettings);
