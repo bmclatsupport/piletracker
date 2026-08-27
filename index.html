@@ -176,6 +176,19 @@ body.gate-on #gate{display:flex;align-items:center;justify-content:center}
   padding:6px 11px;border-radius:999px;white-space:nowrap}
 .selbar .clr{background:transparent;border:0;color:#fff;font-size:18px;line-height:1;padding:2px 7px}
 @media(pointer:coarse){.seg button,.selbar .act{padding:9px 11px;font-size:12px}}
+/* Reviewing a past day. Orange rather than blue, and it sits above the selection bar, because
+   the one thing that must never happen is a coordinator reading an old day as today's. The
+   dashed outline round the whole map says the same thing again without words. */
+.revbar{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:11;
+  display:none;align-items:center;gap:9px;background:var(--bm-orange);color:#fff;
+  border-radius:999px;padding:5px 6px 5px 14px;box-shadow:0 3px 12px rgba(0,0,0,.35);
+  max-width:calc(100% - 16px)}
+.revbar.on{display:flex}
+.revbar .cnt{font-size:12px;font-weight:700;white-space:nowrap}
+.revbar .act{background:rgba(255,255,255,.22);border:0;color:#fff;font-size:11px;font-weight:700;
+  padding:7px 12px;border-radius:999px;white-space:nowrap}
+body.reviewing #mainArea{outline:3px dashed var(--bm-orange);outline-offset:-3px}
+body.reviewing .selbar{top:48px}
 /* live position readout */
 .gpsbar{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;z-index:8;display:none;
   align-items:center;gap:10px;background:rgba(0,38,58,.94);color:#fff;border-radius:999px;
@@ -345,6 +358,30 @@ body.home-on .toolbar,body.home-on .main{display:none}
 .stepq{font-family:var(--font-sub);font-size:17px;color:var(--bm-blue);margin:0 0 11px}
 .steprec{border:1px solid var(--bm-border);border-radius:var(--radius-lg);padding:4px 11px}
 @media(max-width:760px){ .stepq{font-size:18px} .bigbtn{height:62px} .big.dense .bigbtn{height:50px} }
+/* The step-to-a-neighbour pad. Eight directions round the pile you are standing on, laid out
+   the way they sit on the map, so the arrow that points up the screen walks up the screen.
+   Directions with no pile beside them stay as empty outlines rather than vanishing — the pad
+   keeps its shape from pile to pile, so the thumb learns one position and keeps it. */
+.npad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;max-width:264px}
+.npad.sm{gap:5px;max-width:100%}
+.npc{height:52px;border-radius:var(--radius);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1px}
+.npad.sm .npc{height:46px}
+.npc.off{border:1px dashed var(--bm-rebar);opacity:.4}
+.npc.mid{border:0}
+.npc.mid span{width:11px;height:11px;border-radius:50%;background:var(--bm-orange);
+  box-shadow:0 0 0 4px rgba(227,82,5,.20)}
+button.npc.live{border:1.5px solid var(--bm-border);background:#fff;color:var(--bm-blue);
+  font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button.npc.live i{font-style:normal;font-size:21px;line-height:1}
+button.npc.live em{font-style:normal;font-size:9px;line-height:1;color:var(--bm-steel)}
+button.npc.live:active{background:var(--bm-rebar-20)}
+/* the way you last went, picked out so a row is the same tap repeated */
+button.npc.hi{border:2px solid var(--bm-orange);background:#FFF4EE}
+button.npc.hi i{color:var(--bm-orange)}
+button.npc.hi em{color:#A33D04}
+.npnote{font-size:11px;color:var(--bm-steel);margin-top:6px;text-align:center}
+.npnote b{color:var(--bm-blue)}
 .lyx{flex:0 0 auto;height:34px;padding:0 12px;border-radius:var(--radius);border:1px solid #E3B4C0;
   background:#FDF2F4;color:#8B0D2A;font-weight:700;font-size:12px}
 .btn{height:44px;padding:0 16px;border-radius:var(--radius-lg);border:1px solid var(--bm-border);
@@ -631,7 +668,7 @@ body.crew .spacer{display:none}
        Left as null in the master copy. Written by Sync -> Build a standalone tracker.
        A crew page carries only {"fmt":"bm-pile-pack","lockRole":"guest","crewMode":true} and
        waits for a pack, so one hosted page serves every job. -->
-  <script id="bakedProject" type="application/json">{"fmt":"bm-pile-pack","v":1,"app":"4.7","lockRole":"guest","crewMode":true,"piles":[]}</script>
+  <script id="bakedProject" type="application/json">{"fmt":"bm-pile-pack","v":1,"app":"5.9","lockRole":"guest","crewMode":true,"piles":[]}</script>
   <!-- The app sets body.crew during start-up, but the toolbar is painted before start-up
        finishes, so a crew page would show the coordinator's buttons for a frame and then
        drop them. Read the slot here instead, before anything paints. -->
@@ -662,6 +699,10 @@ body.crew .spacer{display:none}
 
   <div class="main" id="mainArea">
     <canvas id="map"></canvas>
+    <div class="revbar" id="revBar">
+      <span class="cnt">Showing <b id="revDay">—</b> · read-only</span>
+      <button class="act" id="revBack">Back to today</button>
+    </div>
     <div class="selbar" id="selBar">
       <span class="cnt" id="selCount">0</span>
       <div class="seg"><button id="selBox" class="on">Box</button><button id="selLasso">Lasso</button></div>
@@ -738,7 +779,7 @@ body.crew .spacer{display:none}
    Single-file, offline-first field app. No external libraries.
    ============================================================ */
 
-const APP_VER = "4.7";
+const APP_VER = "5.9";
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -784,7 +825,9 @@ const S = {
   selMode: false,
   selOp: "add",        // whether a drag adds to or removes from the selection
   selShape: "box",     // box drag or freehand lasso
-  dev: { id: "", name: "", crew: "", driver: "" },   // stamped on every pile this device records
+  /* stamped on every pile this device records. `okFp` is the fingerprint of the job these
+     were last confirmed against — see "Who is recording". Device only, never in a file. */
+  dev: { id: "", name: "", crew: "", driver: "", okFp: "" },
   role: "guest",       // which tools this device offers. See the Roles section
   auth: {},            // salt + one-way hashes of the passcodes, this device only
   base: "esri",
@@ -1163,6 +1206,13 @@ function resize() {
   CW = Math.max(1, Math.round(r.width)); CH = Math.max(1, Math.round(r.height));
   cv.width = Math.round(CW * DPR); cv.height = Math.round(CH * DPR);
   cv.style.width = CW + "px"; cv.style.height = CH + "px";
+  /* A fit that was asked for while the map was hidden gets its chance here, which is the first
+     moment the canvas has a real size. */
+  if (pendingFit && CW >= 50 && CH >= 50) {
+    const f = pendingFit; pendingFit = null;
+    fitBounds(f.b, f.padPx);
+    return;
+  }
   requestDraw();
 }
 const zoomLevel = () => Math.log2(S.view.sc / 256);
@@ -1184,9 +1234,21 @@ const uy = py => S.view.wy + (py - CH / 2) / S.view.sc;
 function viewRect() {
   return { wx0: ux(0), wx1: ux(CW), wy0: uy(0), wy1: uy(CH) };
 }
+/* A fit asked for while the canvas had no size, to be applied once it has one. */
+let pendingFit = null;
+
 function fitBounds(b, padPx) {
   if (!b) return;
   padPx = padPx == null ? 40 : padPx;
+  /* The map is hidden behind the home screen — body.home-on sets .main to display:none — so
+     while a crew is picking their pack the canvas measures nothing. This then worked out
+     (1 - 80) / width, got a negative scale, clamped it to zoom 1, and left the whole site
+     inside a fraction of one pixel. The map was revealed a moment later already looking empty,
+     and because resize only fires on a window resize it stayed that way on a phone for good.
+
+     So a fit against a canvas with no size is not performed, it is remembered. */
+  if (CW < 50 || CH < 50) { pendingFit = { b: b, padPx: padPx }; return; }
+  pendingFit = null;
   const w = Math.max(b.wx1 - b.wx0, 1e-9), h = Math.max(b.wy1 - b.wy0, 1e-9);
   const sc = Math.min((CW - padPx * 2) / w, (CH - padPx * 2) / h);
   S.view.sc = clamp(sc, scaleOf(1), scaleOf(21));
@@ -1235,6 +1297,10 @@ function fillFor(p, st, rt) {
   if (st === "rem") return REM_COLOR[rt] || REM_FALLBACK;
   return (st === "in" || st === "fixed") ? "#6BA43A" : "#A5BAC9";
 }
+/* The second colour, when the survey named two and the map is showing pile type. Colouring by
+   status deliberately overrides it — that view is about progress, and half-and-half dots there
+   would say two things at once. */
+const fill2For = p => S.colorBy === "status" ? null : (p.color2 || null);
 
 /* median nearest-neighbour distance, sampled — used to size everything above */
 function computeSpacing() {
@@ -1514,6 +1580,150 @@ function nearestOpen(from) {
   return best;
 }
 const brgLabel = b => COMPASS[Math.round((((b % 360) + 360) % 360) / 45) % 8];
+
+/* ============================================================
+   Which piles you can step to from here
+
+   A crew standing at a pile wants the ones beside them, and "beside" has a precise meaning
+   worth getting right: q is a neighbour of p only if no third pile sits inside the circle
+   whose diameter is the line p→q. Anything in that circle lies between the two, so stepping
+   there would cross it. That is the Gabriel graph, and it suits a pile field well — on a
+   regular grid it yields the four piles alongside and none of the diagonals, and at the end
+   of a row or across a missing row it adapts on its own with no special case.
+
+   It runs for one pile at a time against the same metre index the row walk uses, so a tap
+   costs a few dozen distance tests rather than triangulating the site.
+   ============================================================ */
+const DIR_ARROW = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"];
+
+/* How far to look. Far enough to reach the row across — pitch is bimodal on a real site,
+   tight inside a block and wider between them — but short enough that a pile at the end of
+   a run offers what is actually beside it rather than something across the field. */
+const neighborReach = () => Math.max(ROW_GAP * 1.7, SPACING_M * 4, 25);
+
+/* How far inside the circle a pile has to be before it counts as being in the way.
+   Not a fudge factor — it settles a case that is otherwise decided by rounding error.
+
+   Take four piles at the corners of a rectangle, which is every pile field here. The circle
+   drawn on one diagonal passes exactly through the other two corners: that is Thales, and it
+   is exact, not approximate. So the pile diagonally across is neither clearly blocked nor
+   clearly clear, and whether it appears comes down to the last bit of a square root. The pad
+   would then show eight arrows at one pile and four at the next, on a layout the crew can see
+   is uniform, and the whole value of a fixed pad — thumb goes to the same place every time —
+   would be gone.
+
+   So a pile must be a few degrees inside the circle to block, which puts the diagonal firmly
+   in. That is what we want here: diagonally across is a real move, the first pile of the next
+   row when a crew snakes back. A pile actually in the way is nowhere near this margin — one
+   directly between two others sits at the centre of the circle, not on its edge.
+
+   The value is measured, not chosen — `tests/tolsweep.cjs` sweeps it against both real sites.
+   With no margin at all the pad changes shape on 59% of Silver Creek piles and 69% of
+   Freshwater piles under 4 cm of survey noise. At 0.03 that is nil on both. Across the whole
+   sweep the closest an offered arrow passes to another pile never moves — 0.57 m on Silver
+   Creek, where some piles genuinely sit half a metre apart, and clear on Freshwater — so the
+   margin buys the stability for nothing. */
+let GABRIEL_TOL = 0.03;                // ≈1.7°, measured — see tests/tolsweep.cjs
+
+function trueNeighbors(from, respectFilters) {
+  if (!from || !GRID) return [];
+  const R = neighborReach(), R2 = R * R;
+  const c = [];
+  for (const q of nearBy(from.gx, from.gy, R)) {
+    if (q === from) continue;
+    if (respectFilters && !passFilt(q)) continue;
+    const dx = q.gx - from.gx, dy = q.gy - from.gy;
+    const d2 = dx * dx + dy * dy;
+    if (d2 > R2 || d2 === 0) continue;
+    c.push({ pile: q, dx, dy, d2 });
+  }
+  c.sort((a, b) => a.d2 - b.d2);
+  /* No point inside the circle on p→q can be further from p than q is — the circle's own
+     furthest point from p is q itself. So only a nearer pile can block one, and testing
+     each candidate against those already accepted or rejected before it is enough. */
+  const out = [];
+  for (let i = 0; i < c.length; i++) {
+    const b = c[i];
+    let blocked = false;
+    for (let j = 0; j < i; j++) {
+      const o = c[j];
+      /* o lies inside the circle with diameter p→b exactly when the angle p-o-b is obtuse.
+         Comparing against the side lengths rather than zero applies the margin above as an
+         angle, so it means the same thing at three metres as at thirty. */
+      const ax = -o.dx, ay = -o.dy, bx = b.dx - o.dx, by = b.dy - o.dy;
+      const dot = ax * bx + ay * by;
+      if (dot < 0 && dot * dot > GABRIEL_TOL * GABRIEL_TOL * (ax * ax + ay * ay) * (bx * bx + by * by)) {
+        blocked = true; break;
+      }
+    }
+    if (blocked) continue;
+    const brg = (Math.atan2(b.dx, b.dy) * 180 / Math.PI + 360) % 360;
+    out.push({ pile: b.pile, m: Math.sqrt(b.d2), brg, dir: Math.round(brg / 45) % 8 });
+  }
+  return out;
+}
+
+/* The eight compass directions, each holding the nearest true neighbour lying in it. Two
+   neighbours can share a sector on an irregular layout; the closer one gets the arrow. */
+function neighborPad(from, respectFilters) {
+  const pad = [null, null, null, null, null, null, null, null];
+  for (const n of trueNeighbors(from, respectFilters)) {
+    if (!pad[n.dir] || n.m < pad[n.dir].m) pad[n.dir] = n;
+  }
+  return pad;
+}
+
+/* The way the crew last went. Walking a row is then the same arrow tapped over and over,
+   which is the whole point — one thumb, same place on the glass, pile after pile. */
+let lastDir = null;
+
+/* row-major order of a 3x3 pad, -1 being the middle where the crew is standing */
+const PAD_CELLS = [7, 0, 1, 6, -1, 2, 5, 4, 3];
+
+/* Which arrow to pick out: the way the crew last went, if there is still a pile that way.
+   Failing that the way the rows run, so the first pile of the day already suggests walking
+   the row rather than making them choose. Failing that the closest pile of the eight. */
+function padPick(pad) {
+  if (lastDir != null && pad[lastDir]) return lastDir;
+  if (ROW_OK) for (const b of [ROW_BRG, ROW_BRG + 180]) {
+    const d = Math.round((((b % 360) + 360) % 360) / 45) % 8;
+    if (pad[d]) return d;
+  }
+  let best = null;
+  for (let d = 0; d < 8; d++) if (pad[d] && (best === null || pad[d].m < pad[best].m)) best = d;
+  return best;
+}
+
+function padHTML(pad, compact) {
+  const live = pad.reduce((a, x) => a + (x ? 1 : 0), 0);
+  if (!live) return `<p class="hint" style="margin-top:10px">No pile beside this one. Tap another on the map.</p>`;
+  const hi = padPick(pad);
+  const cells = PAD_CELLS.map(d => {
+    if (d < 0) return `<div class="npc mid"><span></span></div>`;
+    const n = pad[d];
+    if (!n) return `<div class="npc off"></div>`;
+    return `<button class="npc live${d === hi ? " hi" : ""}" data-nd="${d}"
+      title="${esc(n.pile.id)} · ${ftOf(n.m)} ${COMPASS[d]}"><i>${DIR_ARROW[d]}</i><em>${ftOf(n.m)}</em></button>`;
+  }).join("");
+  const t = hi != null ? pad[hi] : null;
+  return `<div class="npad${compact ? " sm" : ""}">${cells}</div>
+    <div class="npnote">${t
+      ? `Next: <b>${esc(t.pile.id)}</b> · ${ftOf(t.m)} ${COMPASS[hi]}`
+      : `${live} pile${live === 1 ? "" : "s"} beside this one`}</div>`;
+}
+
+/* Recomputed on the tap rather than trusted from render time, because a filter or another
+   crew's merge can land in between. */
+function wirePad(root, from, afterMove) {
+  if (!root) return;
+  root.querySelectorAll("[data-nd]").forEach(b => b.onclick = () => {
+    const n = neighborPad(from, true)[+b.dataset.nd];
+    if (!n) return toast("No pile that way any more");
+    lastDir = +b.dataset.nd;
+    if (afterMove) afterMove();
+    walkTo(n.pile);
+  });
+}
 const brgName = b => ({ N: "north", NE: "north-east", E: "east", SE: "south-east", S: "south", SW: "south-west", W: "west", NW: "north-west" })[brgLabel(b)];
 const gapM = (a, b) => Math.hypot(a.gx - b.gx, a.gy - b.gy);
 
@@ -1839,10 +2049,100 @@ function roundRect(c, x, y, w, h, r) {
   c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y);
   c.closePath();
 }
-/* Block numbers. Sized from how big the block is on screen, so they read as part of
-   the site rather than as fixed-size clutter. While labelling, unnamed blocks show a
-   dash so it is obvious which are still to do. */
+/* ============================================================
+   Block numbers
+
+   One badge per block, all the same size, in the middle of the block.
+
+   They used to be sized from how big the block was on screen — the idea being that they would
+   read as part of the site rather than as fixed clutter. On a real job that came out as a dozen
+   different sizes at once, because block areas vary and the ones near the edge of the view are
+   part-way off it. A number is a label, not a measurement of anything, so it is one size.
+
+   And one per block, not one per outline. Where the outlines are traced round the piles a block
+   split by a road comes out as two pieces of ground, which is right for drawing but wrong for
+   labelling: block 220 does not want two badges reading 220. The largest piece carries it.
+
+   While labelling, that reverses: every outline gets its own badge including the unnamed ones,
+   because there the badge is how you pick the outline you are naming.
+   ============================================================ */
+const BLOCK_LBL_PX = 21;
+
+/* Where the badge sits: the middle of the block's own piles.
+
+   labelPoint finds the interior point furthest from any edge, which is the right answer for
+   labelling an arbitrary polygon and the wrong one here. It maximises clearance, so on a notched
+   or L-shaped block it slides into the fattest lobe — measured at up to 28% of the block's own
+   size away from the middle on Freshwater, which is what reads as a badge sitting off to one
+   side. The centre of the piles is what a person means by the centre of a block, so that is used
+   whenever it falls inside the outline, and the old point is kept as the fallback for when it
+   does not. Worked out once per block and remembered, and thrown away if the block is renamed. */
+function blockLabelPoint(b) {
+  if (b.lbl && b.lblFor === b.name) return b.lbl;
+  b.lblFor = b.name;
+  let sx = 0, sy = 0, n = 0;
+  for (const p of S.piles) {
+    if (p.block !== b.name) continue;
+    if (p.lon < b.box[0] || p.lon > b.box[2] || p.lat < b.box[1] || p.lat > b.box[3]) continue;
+    if (!ptInRing(b.ring, p.lon, p.lat)) continue;
+    sx += p.lon; sy += p.lat; n++;
+  }
+  if (n < 5) {
+    if (!b.mid) b.mid = labelPoint(b.ring);
+    return (b.lbl = b.mid);
+  }
+  const c = [sx / n, sy / n];
+  if (ptInRing(b.ring, c[0], c[1])) return (b.lbl = c);
+
+  /* The middle of a block shaped round a pond, or bent into an L, is not inside the block. Going
+     back to the pole of inaccessibility here left Freshwater's badges 28% of a block away from
+     the middle, which is the whole complaint. So instead take the point inside the outline that
+     is nearest the middle — with a little credit for standing clear of an edge, or the badge ends
+     up straddling the boundary line it is meant to sit within. */
+  const lat = (b.box[1] + b.box[3]) / 2;
+  const kx = Math.cos(lat * Math.PI / 180);
+  const clear = (x, y) => {
+    let best = Infinity;
+    const r = b.ring;
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const ax = (r[j][0] - x) * kx, ay = r[j][1] - y;
+      const bx = (r[i][0] - x) * kx, by = r[i][1] - y;
+      const dx = bx - ax, dy = by - ay;
+      const L = dx * dx + dy * dy;
+      let t = L ? -(ax * dx + ay * dy) / L : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const px = ax + t * dx, py = ay + t * dy;
+      const d = px * px + py * py;
+      if (d < best) best = d;
+    }
+    return Math.sqrt(best);
+  };
+  let pick = null, score = Infinity;
+  const N = 28;
+  for (let i = 1; i < N; i++) {
+    for (let j = 1; j < N; j++) {
+      const x = b.box[0] + (b.box[2] - b.box[0]) * i / N;
+      const y = b.box[1] + (b.box[3] - b.box[1]) * j / N;
+      if (!ptInRing(b.ring, x, y)) continue;
+      const d = Math.hypot((x - c[0]) * kx, y - c[1]);
+      const s = d - clear(x, y) * 0.35;
+      if (s < score) { score = s; pick = [x, y]; }
+    }
+  }
+  if (pick) return (b.lbl = pick);
+  if (!b.mid) b.mid = labelPoint(b.ring);
+  return (b.lbl = b.mid);
+}
+/* Below this the block is a thumbnail and a full-size badge would cover it, so the number is
+   left off rather than drawn over the thing it is naming. */
+const BLOCK_LBL_MIN = 30;
+
+/* Where each block number ended up this frame, so a tap can land on the badge itself rather
+   than on a guess. Numbers are dropped when they would collide, so the only honest way to know
+   what is tappable is to record what was drawn. Cleared and refilled every frame. */
+let blockLabelHits = [];
 function drawBlockLabels() {
+  blockLabelHits = [];
   if (!S.blockRings || !S.blockRings.length) return;
   const setup = !!S.blockMode;
   if (!S.showBlockNames && !setup) return;
@@ -1851,31 +2151,51 @@ function drawBlockLabels() {
   /* Work out every candidate first, then place them biggest-block-first and drop any
      that would collide. Without this the numbers pile on top of each other at site
      zoom and none of them can be read. */
+  /* One outline per block: the biggest piece of it. Outside the labelling screen a block wants a
+     single number, and where the outlines are traced from the piles a block can be several
+     pieces. Done by area rather than by which came first, so the badge lands on the main body of
+     the block and not on a corner of it cut off by a road. */
+  let rings = S.blockRings;
+  if (!setup) {
+    const best = new Map();
+    for (const b of rings) {
+      if (!b.name) continue;
+      const held = best.get(b.name);
+      if (!held || (b.area || 0) > (held.area || 0)) best.set(b.name, b);
+    }
+    rings = [...best.values()];
+  }
+
   const cands = [];
-  for (const b of S.blockRings) {
+  for (const b of rings) {
     if (!b.name && !setup) continue;
     const r = { wx0: lon2wx(b.box[0]), wy0: lat2wy(b.box[3]), wx1: lon2wx(b.box[2]), wy1: lat2wy(b.box[1]) };
     if (!intersect(V, r)) continue;
     const w = (r.wx1 - r.wx0) * S.view.sc, hgt = (r.wy1 - r.wy0) * S.view.sc;
-    if (w < 34 && hgt < 34) continue;
-    if (!b.mid) b.mid = labelPoint(b.ring);
-    const x = sx(lon2wx(b.mid[0])), y = sy(lat2wy(b.mid[1]));
+    if (w < BLOCK_LBL_MIN && hgt < BLOCK_LBL_MIN) continue;
+    /* While labelling, the badge marks the outline being picked, so it stays on the point that
+       is furthest inside it. Otherwise it goes in the middle of the block's piles. */
+    const at = setup ? (b.mid || (b.mid = labelPoint(b.ring))) : blockLabelPoint(b);
+    const x = sx(lon2wx(at[0])), y = sy(lat2wy(at[1]));
     if (x < -80 || y < -30 || x > CW + 80 || y > CH + 30) continue;
     cands.push({ b, x, y, w, hgt, sel: S.hiRing === b });
   }
+  /* Biggest block first, so where two numbers cannot both fit the one with more ground behind
+     it keeps its place. The selected one always wins. */
   cands.sort((p, q) => (q.sel ? 1 : 0) - (p.sel ? 1 : 0) || (q.w * q.hgt) - (p.w * p.hgt));
   const placed = [];
   for (const c of cands) {
     const b = c.b, x = c.x, y = c.y, sel = c.sel;
     const txt = b.name || "?";
-    const fs = clamp(Math.min(c.w, c.hgt) * 0.30, 14, 34);
-    ctx.font = "700 " + Math.round(fs) + "px Arial";
+    const fs = BLOCK_LBL_PX;
+    ctx.font = "700 " + fs + "px Arial";
     const tw = ctx.measureText(txt).width;
     const padX = fs * 0.45, padY = fs * 0.26;
     const bw = tw + padX * 2, bh = fs + padY * 2;
     const rect = [x - bw / 2 - 2, y - bh / 2 - 2, x + bw / 2 + 2, y + bh / 2 + 2];
     if (placed.some(q => rect[0] < q[2] && rect[2] > q[0] && rect[1] < q[3] && rect[3] > q[1])) continue;
     placed.push(rect);
+    blockLabelHits.push({ ring: b, rect: rect });
 
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
@@ -1891,6 +2211,66 @@ function drawBlockLabels() {
     ctx.fillText(txt, x, y + fs * 0.06);
   }
 }
+/* the block number under a screen point, if a tap landed on one */
+function blockLabelAt(px, py) {
+  for (const h of blockLabelHits) {
+    const r = h.rect;
+    /* the drawn box, plus a little, because a finger is wider than the badge */
+    if (px >= r[0] - 4 && px <= r[2] + 4 && py >= r[1] - 4 && py <= r[3] + 4) return h.ring;
+  }
+  return null;
+}
+
+/* ============================================================
+   What is in one block
+
+   Counted from the block each pile is assigned to, not from the shape on the map. Those are
+   the same thing once the outlines have been applied, and using the assignment means these
+   figures are the ones the dashboard, the filters and the reports already agree on. A number
+   that disagrees with the dashboard would be worse than no number.
+
+   Where an outline has been named but no pile carries that name — an outline labelled and not
+   yet applied — the block is reported as empty rather than silently counting something else.
+   ============================================================ */
+function blockStats(name) {
+  const s = {
+    name: name, total: 0,
+    /* `done` counts piles, by status, exactly as tally() does for the whole site. It is not
+       inst + remFixed: a pile that went in, was flagged and was then remediated is installed
+       and remediated at once, so adding those two counts it twice and the progress figure can
+       end up larger than the block. */
+    done: 0,
+    inst: 0, notInst: 0, unrecorded: 0,   // the installation record — these three add to total
+    remOpen: 0, remFixed: 0,              // remediation, which can overlap the above
+    byRem: new Map(),                     // remediation type -> { open, fixed }
+    byType: new Map(),                    // pile type -> count
+    bySym: new Map(),                     // symbol -> count
+    withNote: 0, crews: new Map(), lastTs: 0
+  };
+  if (name == null) return s;
+  for (const p of S.piles) {
+    if (p.block !== name) continue;
+    s.total++;
+    s.byType.set(p.type, (s.byType.get(p.type) || 0) + 1);
+    const sym = p.sym || "array";
+    s.bySym.set(sym, (s.bySym.get(sym) || 0) + 1);
+    const o = S.ov[p.k] || {};
+    const st = statusOf(p.k);
+    if (st === "in" || st === "fixed") s.done++;
+    if (o.tsI) { if (o.st) s.inst++; else s.notInst++; } else s.unrecorded++;
+    if (o.rm) {
+      const t = o.rt || "flagged";
+      const e = s.byRem.get(t) || { open: 0, fixed: 0 };
+      if (st === "fixed" || o.rf) { e.fixed++; s.remFixed++; } else { e.open++; s.remOpen++; }
+      s.byRem.set(t, e);
+    }
+    if ((o.nt || "").trim()) s.withNote++;
+    if (o.cr) s.crews.set(o.cr, (s.crews.get(o.cr) || 0) + 1);
+    if (o.ts && o.ts > s.lastTs) s.lastTs = o.ts;
+  }
+  return s;
+}
+
 /* smallest block containing a screen point — for tapping one on the map */
 function ringAt(px, py) {
   const lon = wx2lon(ux(px)), lat = wy2lat(uy(py));
@@ -1911,6 +2291,7 @@ function drawDesign() {
   for (const f of S.design) {
     const lay = S.dLayers.get(f.l);
     if (lay && !lay.on) continue;
+    if (!f.w || !f.w.length) continue;          // skipped by prepDesign: nothing to draw
     if (f.b && !intersect(V, f.b)) continue;
     const def = DESIGN_STYLE[f.kind] || DESIGN_STYLE.other;
     const stroke = f.sc || def.c;
@@ -2030,10 +2411,14 @@ function draw() {
     const o = st === "rem" ? (S.ov[p.k] || {}) : null;
     const rt = o ? (o.rt || "") : "";
     const fill = fillFor(p, st, rt);
+    const fill2 = fill2For(p);
     const sym = p.sym || "array";
-    const key = useShapes ? fill + "|" + st + "|" + rt + "|" + sym : fill + "|" + st + "|" + rt;
+    /* the second colour joins the bucket key, so every bucket stays one colour pair and the
+       half-disc pass below is still one path and one fill per bucket */
+    const key = (useShapes ? fill + "|" + st + "|" + rt + "|" + sym : fill + "|" + st + "|" + rt)
+      + (fill2 ? "|" + fill2 : "");
     let b = buckets.get(key);
-    if (!b) { b = { fill: fill, st: st, rt: rt, sym: sym, i: buckets.size, pts: [] }; buckets.set(key, b); }
+    if (!b) { b = { fill: fill, fill2: fill2, st: st, rt: rt, sym: sym, i: buckets.size, pts: [] }; buckets.set(key, b); }
     if (S.sel.has(p.k)) selArr.push(x, y);
     if (dedupe) {
       /* round, not truncate — the key has to name the pixel the dot actually lands on,
@@ -2094,6 +2479,28 @@ function draw() {
       paths(b.pts, rr, b.sym);
       ctx.fillStyle = col; ctx.fill();
     }
+  });
+
+  /* Second colour: the right half of the dot, painted over the first.
+
+     Batched exactly like every other pass — one path holding a semicircle per pile, one fill
+     per bucket — so a fifth of Freshwater being two-toned costs one extra fill, not one per
+     pile. Skipped when the dot is too small for two colours to read as anything but noise, and
+     when the dot is not a filled round one: a half-covered cross or ring would be a puzzle
+     rather than a pile. */
+  if (!thin && r >= 2.2) order.forEach(b => {
+    if (!b.fill2) return;
+    if (b.st === "rem") return;                  // the remediation colour owns the dot
+    if (useShapes && (SYMBOLS[b.sym] || SYMBOLS.array).kind !== "fill") return;
+    const a = b.pts;
+    ctx.beginPath();
+    for (let i = 0; i < a.length; i += 2) {
+      ctx.moveTo(a[i], a[i + 1] - r);
+      ctx.arc(a[i], a[i + 1], r, -Math.PI / 2, Math.PI / 2);
+      ctx.closePath();
+    }
+    ctx.fillStyle = (thin && lumOf(b.fill2) < 0.05) ? "#454545" : b.fill2;
+    ctx.fill();
   });
 
   order.forEach(b => {                          // remediation type / remediated marker
@@ -2463,13 +2870,75 @@ async function dominantColor(blob) {
 const NAMED = {
   black: "#111111", white: "#FFFFFF", red: "#E60000", yellow: "#FFD500", orange: "#FF8A3D",
   pink: "#FF73DF", purple: "#BC00FF", brown: "#7B3D11", green: "#4FA82E", "light green": "#A6D93C",
+  "lime green": "#B4E200", lime: "#B4E200",
   "dark blue": "#02219E", "light blue": "#00B0F0", blue: "#0B63C5", grey: "#8A8A8A", gray: "#8A8A8A",
   inverter: "#00B0F0", motor: "#FF8A3D", tan: "#C8A165", teal: "#00857D", magenta: "#D6008F"
 };
+const NAMED_LONGEST = Object.keys(NAMED).sort((a, b) => b.length - a.length);
+
+/* The hex for a colour word, or null if this is not a colour word at all.
+   The whole name is tried before any substring: matching substrings longest-first alone made
+   "Light Green" work by luck and would read "Greenfield" as green. */
+/* `inverter` and `motor` are in the table so that a pile type called "Inverter Pad" gets a
+   sensible colour. They are not colour words, so they must not let a name be read as a list of
+   colours — "Red/Inverter Pad 7" is one red pile, not a red and blue one. */
+const NOT_A_COLOR = { inverter: 1, motor: 1 };
+function namedColor(name, strict) {
+  const l = String(name).trim().toLowerCase();
+  if (!l) return null;
+  if (NAMED[l] && !(strict && NOT_A_COLOR[l])) return NAMED[l];
+  for (const k of NAMED_LONGEST) {
+    if (strict && NOT_A_COLOR[k]) continue;
+    if (l.indexOf(k) >= 0) return NAMED[k];
+  }
+  return null;
+}
+
+/* ============================================================
+   Piles the survey gives two colours
+
+   Freshwater's spreadsheet names a colour per pile and 14 of its 23 values name two, separated
+   by a slash: "Pink/Black", "Green/Yellow", "Black/Lime Green". Between them that is 3,896
+   piles, a fifth of the site.
+
+   Only one colour was ever drawn, and which one was an accident of spelling. The old lookup
+   scanned its colour words longest-first over the whole string, so "Pink/Black" matched "black"
+   — five letters beating pink's four — while "Purple/Black" matched "purple". Nothing was wrong
+   on screen, which is what made it hard to see: the dot was a plausible colour, just not
+   reliably the one the survey meant. "Blue/White" came out white, which on a satellite
+   photograph is nearly nothing at all.
+
+   So a name that reads as several colours is kept as several colours, and the dot is drawn in
+   halves. The test is deliberately strict: every part has to be a colour word we know. That
+   way "Pink/Black" splits and a type like "CAB/DCD" — a slash that means something else
+   entirely — is left alone.
+   ============================================================ */
+function colorParts(name) {
+  const parts = String(name).split("/").map(s => s.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  const out = [];
+  for (const p of parts) {
+    const c = namedColor(p, true);             // colour words only, see NOT_A_COLOR
+    if (!c) return null;                       // not a list of colours — leave it alone
+    if (out.indexOf(c) < 0) out.push(c);
+  }
+  /* "Red/Red", or two words that land on the same hex, is one colour however it is written */
+  return out.length > 1 ? out : null;
+}
+
+/* One background for every swatch in the interface, so a legend, a layer row, a dashboard
+   table and the pile panel all show what the map shows. A hard-stopped gradient, not a blend —
+   the pile is two colours, not a mixture of them. */
+const swatchBg = (c1, c2) => c2
+  ? `linear-gradient(90deg,${c1} 0 50%,${c2} 50% 100%)`
+  : String(c1 || "#888");
+/* the same for a type name, looked up in whatever type map is to hand */
+const typeBg = (t, map) => { const o = (map || S.types).get(t) || {}; return swatchBg(o.color || "#888", o.color2); };
+
 function guessColor(name) {
+  const named = namedColor(name);
+  if (named) return named;
   const l = String(name).toLowerCase();
-  const keys = Object.keys(NAMED).sort((a, b) => b.length - a.length);
-  for (const k of keys) if (l.indexOf(k) >= 0) return NAMED[k];
   let h = 0; for (let i = 0; i < l.length; i++) h = (h * 31 + l.charCodeAt(i)) >>> 0;
   const pal = ["#00263A", "#E35205", "#4F758B", "#7A97AB", "#264061", "#A5BAC9", "#FFB71B", "#009ADE", "#6BA43A", "#C40D3C"];
   return pal[h % pal.length];
@@ -3499,15 +3968,22 @@ async function buildProject(name, parsed, zip, roles, keepColors) {
     if (kEl) p.elev = ex[kEl];
     delete ex.__name;
     piles.push(p);
-    if (!types.has(type)) types.set(type, {
-      color: (keepColors && keepColors.get(type)) || colorByGroup.get(raw.g) || guessColor(colr || type),
-      n: 0, on: true
-    });
+    if (!types.has(type)) {
+      /* A name like "Pink/Black" keeps both. The colour on the row wins over the type name,
+         since that is what the survey actually recorded against the pile. */
+      const parts = colorParts(colr) || colorParts(type);
+      types.set(type, {
+        color: (keepColors && keepColors.get(type)) || colorByGroup.get(raw.g)
+          || (parts && parts[0]) || guessColor(colr || type),
+        color2: parts && parts[1] || null,
+        n: 0, on: true
+      });
+    }
     types.get(type).n++;
     if (!blocks.has(block)) blocks.set(block, { n: 0, on: true });
     blocks.get(block).n++;
   }
-  for (const p of piles) p.color = types.get(p.type).color;
+  for (const p of piles) { const t = types.get(p.type); p.color = t.color; p.color2 = t.color2 || null; }
 
   // design layer registry + projected coords for drawing
   const dLayers = new Map();
@@ -3527,7 +4003,9 @@ async function buildProject(name, parsed, zip, roles, keepColors) {
 
   const proj = {
     name, count: piles.length, createdAt: nowTs(), fp: fingerprint(piles),
-    types: [...types].map(([t, o]) => ({ t, color: o.color, n: o.n })),
+    /* color2 only when there is one, so a single-colour project carries no dead keys */
+    types: [...types].map(([t, o]) => o.color2 ? { t, color: o.color, color2: o.color2, n: o.n }
+      : { t, color: o.color, n: o.n }),
     blocks: [...blocks].map(([t, o]) => ({ t, n: o.n })),
     dLayers: [...dLayers].map(([t, o]) => ({ t, n: o.n, kind: o.kind })),
     symbols: [...symCount].map(([s, n]) => ({ s, n })),
@@ -3576,7 +4054,7 @@ async function activateProject(built, keepOverlay, noPersist) {
   if (!noPersist) {
     await kvPut("proj", S.proj);
     await kvPut("piles", pileRows());
-    await kvPut("design", S.design.map(f => [f.t, f.l, f.n, f.c, f.sc, f.sw, f.sf]));
+    await kvPut("design", packedDesign());
   }
   await kvPut("blockRings", S.blockRings || []);
   await kvPut("regions", serialRegions());
@@ -3585,9 +4063,22 @@ async function activateProject(built, keepOverlay, noPersist) {
   fitBounds(S.proj.bounds, 50);
   refreshKPI();
 }
+/* how many design shapes had to be skipped last time the drawing was prepared */
+let designSkipped = 0;
+
 function prepDesign() {
+  designSkipped = 0;
   for (const f of S.design) {
     f.kind = f.kind || DESIGN_KIND(f.l);
+    /* A shape whose coordinates are not a list of points is skipped rather than thrown over.
+       This mattered more than it looks: an older build reading a newer pack sees the compact
+       design rows as plain ones, so `c` comes out as a dictionary index — a number — and
+       `c.map` threw from here, took openPack down with it, and left the crew on the home screen
+       with nothing loaded and no message. Skipping costs the drawing and keeps the piles. */
+    if (!Array.isArray(f.c) || !f.c.length || !Array.isArray(f.c[0])) {
+      f.c = []; f.w = []; f.b = null; designSkipped++;
+      continue;
+    }
     f.w = f.c.map(c => [lon2wx(c[0]), lat2wy(c[1])]);
     let b = { wx0: Infinity, wx1: -Infinity, wy0: Infinity, wy1: -Infinity };
     for (const q of f.w) {
@@ -3597,8 +4088,230 @@ function prepDesign() {
     f.b = b;
   }
 }
-function restorePiles(rows, proj, dRows) {
-  const types = new Map((proj.types || []).map(o => [o.t, { color: o.color, n: o.n, on: true }]));
+/* ============================================================
+   Storing piles without storing the same thing twice
+
+   A pile row used to be written out exactly as it sits in memory, which meant the survey's
+   column names were repeated on every pile. On Freshwater that is six names — "Pile ID",
+   "Northing", "Easting", "Top of Pile Elevation", "Color", "Pile Type" — written 19,551 times:
+   1.40 MB of the same words, in a 5.32 MB file.
+
+   Worse, several columns held nothing new. "Pile ID" was the pile's own id. "Color" was its
+   type. "Pile Type" was the same word on every pile. The key was the group and the id joined
+   by a bar. And the coordinates carried sixteen digits where seven decimals places a pile
+   within seven millimetres.
+
+   So each column is looked at once and written the cheapest way that loses nothing:
+
+     mirror   every value equals another field on the same row — store nothing, rebuild it
+     const    every value is the same — store it once
+     dict     few distinct values — store those once and an index per pile
+     raw      genuinely different every time — store it
+
+   Nothing is approximated except the coordinates, and that is bounded and measured. Decoding
+   returns the identical pile: tests/compact.cjs encodes both real sites, decodes them, and
+   compares every field of every pile.
+
+   The old format still loads — see restorePiles. A coordinator holding last night's backup, or
+   a crew tablet holding a pack from this morning, must not be stranded by this.
+   ============================================================ */
+const CODEC_V = 2;
+/* row slots a column can mirror, by name */
+const MIRRORABLE = { id: 1, g: 2, block: 3, type: 4, size: 8, sym: 9, sub: 10 };
+/* Enough distinct values and a dictionary costs more than it saves. An index is 1-6 characters
+   plus a comma; a dictionary entry is the value plus quotes and a comma. */
+const worthDict = (distinct, n) => distinct > 1 && distinct * 8 < n;
+
+function encodePiles(piles) {
+  const n = piles.length;
+  if (!n) return { enc: { v: CODEC_V, exKeys: [], exCols: [], dicts: {}, exDicts: {}, kDerived: false }, rows: [] };
+
+  /* every extras key any pile has, in first-seen order so a round trip keeps column order */
+  const exKeys = [];
+  for (const p of piles) for (const k in (p.ex || {})) if (exKeys.indexOf(k) < 0) exKeys.push(k);
+
+  const sVal = v => v == null ? null : String(v);
+  const exCols = [], exDicts = {}, keep = [];
+  for (const k of exKeys) {
+    const vals = piles.map(p => (p.ex || {})[k]);
+    const present = vals.every(v => v != null && v !== "");
+    let how = null;
+    if (present) {
+      for (const f in MIRRORABLE) {
+        const slot = MIRRORABLE[f];
+        if (piles.every((p, i) => sVal(vals[i]) === sVal(pileSlot(p, slot)))) { how = ["mirror", f]; break; }
+      }
+      if (!how) {
+        const first = sVal(vals[0]);
+        if (vals.every(v => sVal(v) === first)) how = ["const", vals[0]];
+      }
+    }
+    if (!how) {
+      const d = new Set(vals.map(sVal));
+      if (worthDict(d.size, n)) {
+        exDicts[k] = [...d];
+        how = ["dict", null];
+      } else how = ["raw", null];
+      keep.push(k);
+    }
+    exCols.push([k, how[0], how[1]]);
+  }
+
+  /* the same treatment for the plain row columns, which on a real site are mostly a handful of
+     repeated words — one group name, fourteen blocks, twenty-three colours */
+  const dicts = {};
+  for (const f in MIRRORABLE) {
+    const slot = MIRRORABLE[f];
+    if (slot === 1) continue;                       // the id is unique by definition
+    const d = new Set(piles.map(p => sVal(pileSlot(p, slot))));
+    if (worthDict(d.size, n)) dicts[slot] = [...d];
+  }
+
+  /* the key is the group and the id joined, unless some import made it otherwise */
+  const kDerived = piles.every(p => p.k === p.g + "|" + p.id);
+
+  const idxOf = (slot, p) => {
+    const d = dicts[slot];
+    const v = sVal(pileSlot(p, slot));
+    return d ? d.indexOf(v) : pileSlot(p, slot);
+  };
+  const rows = piles.map(p => {
+    const exv = keep.map(k => {
+      const v = (p.ex || {})[k];
+      const d = exDicts[k];
+      return d ? d.indexOf(sVal(v)) : (v == null ? null : v);
+    });
+    const r = [kDerived ? null : p.k, p.id, idxOf(2, p), idxOf(3, p), idxOf(4, p),
+      round7(p.lat), round7(p.lon), exv, idxOf(8, p), idxOf(9, p), idxOf(10, p)];
+    /* trailing empties are the common case — drop them and let the decoder fill in */
+    while (r.length > 8 && (r[r.length - 1] === "" || r[r.length - 1] === null)) r.pop();
+    return r;
+  });
+  return { enc: { v: CODEC_V, exKeys, exCols, dicts, exDicts, kDerived, keep }, rows };
+}
+
+/* seven decimal places is under a centimetre of latitude; the measured worst case across both
+   real sites is 6.9 mm, against a survey that is itself good to about ten times that */
+const round7 = v => Math.round(v * 1e7) / 1e7;
+
+/* ============================================================
+   Storing the design drawing
+
+   A whole-site CAD export is the biggest thing in the file by a wide margin: Silver Creek's is
+   26,313 shapes and 198,010 points, which written out plainly is 9.2 MB — four times the rest
+   of the project put together. It was left out of the builds for exactly that reason, and
+   leaving it out cost the coordinator the site fence and the access roads.
+
+   Two things make it fit. The strings repeat endlessly — a layer name, a colour and a width per
+   shape, out of a few dozen distinct values — so they become dictionaries. And the points of a
+   polyline are metres apart, so after the first one they are stored as steps from the point
+   before at 1e-7 of a degree, which is a small integer instead of a fifteen digit number.
+
+   Flat arrays rather than pairs, too: [x,y,x,y,…] saves the two brackets and the comma that
+   every [x,y] costs, which on 198,010 points is most of a megabyte on its own.
+   ============================================================ */
+const DENC_V = 1;
+const D_STR = ["t", "l", "n", "sc", "sf"];        // dictionary these
+const D_NUM = ["sw"];                             // and this, which is a short list of widths
+
+function encodeDesign(design) {
+  const dicts = {};
+  for (const f of D_STR.concat(D_NUM)) dicts[f] = [];
+  const idx = (f, v) => {
+    if (v === undefined || v === null || v === "") return -1;
+    const d = dicts[f];
+    const s = String(v);
+    let i = d.indexOf(s);
+    if (i < 0) { d.push(s); i = d.length - 1; }
+    return i;
+  };
+  const rows = (design || []).map(f => {
+    const head = D_STR.concat(D_NUM).map(k => idx(k, f[k]));
+    const c = f.c || [];
+    const flat = [];
+    let px = 0, py = 0;
+    for (let i = 0; i < c.length; i++) {
+      const x = Math.round(c[i][0] * 1e7), y = Math.round(c[i][1] * 1e7);
+      if (i === 0) { flat.push(x, y); } else { flat.push(x - px, y - py); }
+      px = x; py = y;
+    }
+    return head.concat([flat]);
+  });
+  return { enc: { v: DENC_V, fields: D_STR.concat(D_NUM), dicts: dicts }, rows: rows };
+}
+
+function decodeDesign(enc, rows) {
+  const fields = enc.fields || D_STR.concat(D_NUM);
+  const numeric = new Set(D_NUM);
+  return (rows || []).map(r => {
+    const o = {};
+    fields.forEach((k, i) => {
+      const at = r[i];
+      if (at == null || at < 0) return;
+      const v = (enc.dicts[k] || [])[at];
+      if (v === undefined) return;
+      o[k] = numeric.has(k) ? Number(v) : v;
+    });
+    const flat = r[fields.length] || [];
+    const c = [];
+    let px = 0, py = 0;
+    for (let i = 0; i < flat.length; i += 2) {
+      px = i === 0 ? flat[0] : px + flat[i];
+      py = i === 0 ? flat[1] : py + flat[i + 1];
+      c.push([px / 1e7, py / 1e7]);
+    }
+    o.c = c;
+    return o;
+  });
+}
+const pileSlot = (p, slot) => slot === 1 ? p.id : slot === 2 ? p.g : slot === 3 ? p.block
+  : slot === 4 ? p.type : slot === 8 ? (p.size || "") : slot === 9 ? (p.sym || "array")
+    : slot === 10 ? (p.sub || "") : undefined;
+
+/* Turn one compact row back into the plain row the rest of the app expects, so only this
+   function knows the compact form and nothing downstream changes. */
+function decodeRow(r, enc) {
+  const un = (slot, i) => {
+    const d = enc.dicts[slot];
+    const v = r[i];
+    return d ? (d[v] === undefined ? "" : d[v]) : (v == null ? "" : v);
+  };
+  const id = r[1], g = un(2, 2), block = un(3, 3), type = un(4, 4);
+  const size = un(8, 8), sym = un(9, 9) || "array", sub = un(10, 10);
+  /* `keep` lists, in order, the columns that really have a value per pile — exactly what r[7]
+     holds. Mirror and const columns are not in it, because nothing was stored for them. */
+  const ex = {};
+  const keep = enc.keep || [];
+  const exv = r[7] || [];
+  const slotVal = { id, g, block, type, size, sym, sub };
+  for (const col of enc.exCols) {
+    const name = col[0], how = col[1], arg = col[2];
+    if (how === "mirror") { ex[name] = slotVal[arg]; continue; }
+    if (how === "const") { ex[name] = arg; continue; }
+    const raw = exv[keep.indexOf(name)];
+    if (raw == null) continue;                       // this pile simply did not have it
+    if (how === "dict") { const d = enc.exDicts[name]; if (d && d[raw] !== undefined) ex[name] = d[raw]; }
+    else if (raw !== "") ex[name] = raw;
+  }
+  return [enc.kDerived ? g + "|" + id : r[0], id, g, block, type, r[5], r[6], ex, size, sym, sub];
+}
+
+function restorePiles(rows, proj, dRows, enc, dEnc) {
+  /* Old files hold plain rows and no encoding block. Read them unchanged — a backup from
+     last night has to open. */
+  if (enc && enc.v) rows = rows.map(r => decodeRow(r, enc));
+  /* A pack or backup made before two-tone piles existed carries one colour per type, and for a
+     name like "Pink/Black" that one colour was whichever word the old lookup happened to match
+     — black here, purple for "Purple/Black". So when the name plainly reads as two colours and
+     the file has no second colour recorded, both are worked out again from the name. Otherwise
+     those piles would keep the arbitrary colour until somebody re-imported the spreadsheet. */
+  const types = new Map((proj.types || []).map(o => {
+    if (o.color2) return [o.t, { color: o.color, color2: o.color2, n: o.n, on: true }];
+    const parts = colorParts(o.t);
+    return parts
+      ? [o.t, { color: parts[0], color2: parts[1], n: o.n, on: true }]
+      : [o.t, { color: o.color, color2: null, n: o.n, on: true }];
+  }));
   const blocks = new Map((proj.blocks || []).map(o => [o.t, { n: o.n, on: true }]));
   const dLayers = new Map((proj.dLayers || []).map(o => [o.t, { n: o.n, on: true, kind: o.kind }]));
   const piles = rows.map(r => {
@@ -3607,12 +4320,18 @@ function restorePiles(rows, proj, dRows) {
       ex: r[7] || {}, size: r[8] || "", sym: r[9] || "array", sub: r[10] || "",
       wx: lon2wx(r[6]), wy: lat2wy(r[5])
     };
-    p.color = (types.get(p.type) || { color: "#888" }).color;
+    const t = types.get(p.type) || { color: "#888" };
+    p.color = t.color;
+    p.color2 = t.color2 || null;
     const kEl = findKey(p.ex, ELEV_KEYS); if (kEl) p.elev = p.ex[kEl];
     const kSym = findKey(p.ex, SYMBOL_KEYS); if (kSym) p.symRaw = String(p.ex[kSym]).trim();
     return p;
   });
-  const design = (dRows || []).map(r => ({ t: r[0], l: r[1], n: r[2], c: r[3], sc: r[4], sw: r[5], sf: r[6] }));
+  /* Design comes either as the compact form with its own key, or as the plain rows every
+     earlier file holds. Both have to load — a backup from before this change must still open. */
+  const design = (dEnc && dEnc.v)
+    ? decodeDesign(dEnc, dRows)
+    : (dRows || []).map(r => ({ t: r[0], l: r[1], n: r[2], c: r[3], sc: r[4], sw: r[5], sf: r[6] }));
   return { proj, piles, types, blocks, design, dLayers, pLayers: buildPLayers(piles) };
 }
 
@@ -3736,7 +4455,36 @@ const INSTALL_FIELDS = ["st", "dr"];
 const REM_FIELDS = ["rm", "rf", "rt"];
 const touches = (patch, fields) => fields.some(f => f in patch);
 
+/* The action that triggered the "who is recording" question, held so it can be carried out
+   once the question is answered. Losing it would teach the crew that the first tap never
+   counts.
+
+   It holds the whole action rather than one pile. Gating each pile separately looked simpler
+   and quietly threw work away: marking four hundred selected piles installed calls setPile
+   four hundred times, so the first would raise the question and the other three hundred and
+   ninety nine would be dropped on the floor. */
+let pendingAction = null;
+
+/* Run something that stamps a name onto the record, or hold it and ask who is recording
+   first. Returns false when it has been held, so the caller stops. */
+function requireIdentity(run) {
+  if (identityOK()) return true;
+  pendingAction = run;
+  openCrew(true);
+  return false;
+}
+
 function setPile(k, patch) {
+  /* Looking at a past day is looking at something that is no longer true, so nothing can be
+     written from there. Checked before anything else: a record made against a historical set
+     would be thrown away when the live records come back, which is the worst outcome — work
+     that looked recorded and was not. */
+  if (reviewing()) { toast("Showing " + review.day + ". Tap Back to today to record", 3600); return; }
+  /* Nothing is stamped under a name nobody has agreed to. Every route into this function is a
+     person tapping something — a merge writes to S.ov directly and is unaffected — so asking
+     here catches all of them and leaves looking around the map alone. Bulk edits ask before
+     their loop instead, so this only ever defers a single tap. */
+  if (!requireIdentity(() => setPile(k, patch))) return;
   const solo = beginAction(describePatch(patch, 1));
   noteChange(k);
   const o = S.ov[k] || (S.ov[k] = { st: 0, rm: 0, rf: 0, rt: "", nt: "", cr: "", dr: "", by: "", ts: 0 });
@@ -3942,8 +4690,14 @@ function endPtr(e) {
       toast("Tap inside a block outline to name it");
       return;
     }
+    /* The block number sits on top of the piles, so a tap on the badge belongs to the badge.
+       Checked before the piles for that reason — otherwise a pile behind the number would
+       take a tap aimed squarely at it. */
+    const badge = blockLabelAt(tx, ty);
+    if (badge) { S.cur = null; openBlockSummary(badge); return; }
     const hit = hitTest(tx, ty);
-    if (hit) openPile(hit.k); else { S.cur = null; closePanel(); requestDraw(); }
+    if (hit) { S.hiRing = null; openPile(hit.k); }
+    else { S.cur = null; S.hiRing = null; closePanel(); requestDraw(); }
   } else if (gest.type === "box" || gest.type === "lasso") {
     const x0 = Math.min(gest.x0, gest.x1), x1 = Math.max(gest.x0, gest.x1);
     const y0 = Math.min(gest.y0, gest.y1), y1 = Math.max(gest.y0, gest.y1);
@@ -4040,8 +4794,11 @@ function closePanel() {
   $("#panel").classList.remove("open");
   panelRefresh = null;
   if (S.blockMode) { S.blockMode = false; S.hiRing = null; requestDraw(); }
+  /* a block summary highlights its outline — that goes when the panel does */
+  else if (S.hiRing) { S.hiRing = null; requestDraw(); }
 }
 $("#panelClose").onclick = () => { closePanel(); S.cur = null; requestDraw(); };
+$("#revBack").onclick = exitReview;
 
 /* Bottom-sheet handle: drag to any height, tap to snap between short and tall.
    Field crews need to see the map while a pile is open, so the sheet has to move. */
@@ -4102,7 +4859,13 @@ function wrapTables(root) {
   });
 }
 
+/* A modal that must be answered rather than dismissed. Only "who is recording" uses it, and
+   it is reset on every open so a locked modal cannot leave the next one without its close. */
+let modalLocked = false;
+function lockModal() { modalLocked = true; $("#modalClose").style.display = "none"; }
+
 function modal(title, bodyHTML, buttons) {
+  modalLocked = false; $("#modalClose").style.display = "";
   $("#modalTitle").textContent = title;
   $("#modalBody").innerHTML = bodyHTML;
   $("#modalBody").scrollTop = 0;
@@ -4113,9 +4876,9 @@ function modal(title, bodyHTML, buttons) {
   });
   $("#scrim").classList.add("open");
 }
-function closeModal() { $("#scrim").classList.remove("open"); }
-$("#modalClose").onclick = closeModal;
-$("#scrim").onclick = e => { if (e.target === $("#scrim")) closeModal(); };
+function closeModal() { modalLocked = false; $("#scrim").classList.remove("open"); }
+$("#modalClose").onclick = () => { if (!modalLocked) closeModal(); };
+$("#scrim").onclick = e => { if (e.target === $("#scrim") && !modalLocked) closeModal(); };
 
 /* ---------------- pile detail ---------------- */
 /* ============================================================
@@ -4145,6 +4908,10 @@ function walkTo(q) {
 function walkAdvance(k, quick) {
   const p = pileOf(k); if (!p) return;
   const w = S.walk;
+  /* Record and step are one button here, so the question has to be settled before either.
+     Deferring only the record would move the crew on and leave the pile behind unrecorded —
+     the one outcome a walk must never produce. */
+  if (quick && !requireIdentity(() => walkAdvance(k, quick))) return;
   if (quick === "in") setPile(k, { st: 1 });
   else if (quick === "ok") setPile(k, { rm: 0, rf: 0, rt: "" });
 
@@ -4335,7 +5102,7 @@ function stepHead(p, k, n) {
   ].filter(Boolean);
   return `<div class="stephd">
     <div class="stepid">
-      <span class="swatch" style="width:20px;height:20px;background:${esc(p.color)};border-color:${ST[st].ring};border-width:3px"></span>
+      <span class="swatch" style="width:20px;height:20px;background:${swatchBg(p.color, p.color2)};border-color:${ST[st].ring};border-width:3px"></span>
       <b>${esc(p.id)}</b>
       <span>${esc(p.type)}${p.block && p.block !== "Unassigned" ? " · block " + esc(p.block) : ""}${S.regionOf.get(p.block) ? " · " + esc(S.regionOf.get(p.block)) : ""}</span>
       <button class="wklink" id="stAll">Show all</button>
@@ -4400,7 +5167,11 @@ function openPileSteps(k) {
         placeholder="Anything the next crew needs to know. Leave empty if not…">${esc(o.nt || "")}</textarea></div>`;
   } else {
     const st = statusOf(k);
-    const nx = S.walk.on ? null : stepNext(p);
+    /* Walk mode drives its own stepping, so the pad only appears outside it. */
+    const pad = S.walk.on ? null : neighborPad(p, true);
+    /* Only when nothing is beside this pile — the end of a run, or a filter that hid the
+       neighbours — is a jump offered, so the pad stays the normal way to move. */
+    const open = (pad && pad.some(Boolean)) ? null : nearestOpen(p);
     body += `<div class="stepq">${titles[4]}</div>
       <div class="steprec">
         <div class="readrow"><span>Installation</span><b>${o.tsI ? (o.st ? "Installed" : "Not installed") : "not recorded"}</b></div>
@@ -4410,9 +5181,11 @@ function openPileSteps(k) {
         ${o.tsI || o.tsR ? `<div class="readrow"><span>Stamped</span><b>${esc([o.cr, o.dr].filter(Boolean).join(" · ") || "not recorded")}
           <span style="color:var(--bm-steel);font-weight:400"><br>${fmtDate(o.tsR || o.tsI)}</span></b></div>` : ""}
       </div>
-      ${nx ? `<button class="btn pri wide" id="s4next" style="width:100%;height:56px;margin-top:12px">
-        Next pile ▸ ${esc(nx.id)} <span style="font-weight:400;opacity:.85">· ${ftOf(gapM(p, nx))}</span></button>`
-      : `<p class="hint" style="margin-top:12px">No neighbouring pile found to move on to. Tap another on the map.</p>`}
+      ${pad ? `<div class="section-title" style="margin-top:14px">Move to the next pile</div>
+        ${padHTML(pad, true)}` : ""}
+      ${open ? `<button class="btn pri wide" id="s4open" style="width:100%;height:52px;margin-top:10px">
+        Nearest pile not recorded ▸ ${esc(open.id)}
+        <span style="font-weight:400;opacity:.85">· ${ftOf(gapM(p, open))}</span></button>` : ""}
       <button class="btn wide" id="s4again" style="width:100%;margin-top:8px">Change something on this pile</button>`;
   }
   $("#panelBody").innerHTML = body;
@@ -4441,11 +5214,8 @@ function openPileSteps(k) {
     };
     $("#fNt").onblur = save;
     } else {
-    if ($("#s4next")) $("#s4next").onclick = () => {
-      const nx = stepNext(p);
-      if (!nx) return toast("No neighbouring pile found");
-      pileStep = 1; walkTo(nx);
-    };
+    wirePad($("#panelBody"), p, () => { pileStep = 1; });
+    if ($("#s4open")) $("#s4open").onclick = () => { pileStep = 1; walkTo(open); };
     $("#s4again").onclick = () => go(1);
   }
 
@@ -4502,7 +5272,7 @@ function openPile(k) {
       style="display:block;margin:0 0 6px;padding:8px 0">‹ Back to one question at a time</button>` : ""}
     ${walkStrip(p)}
     <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
-      <span class="swatch" style="width:22px;height:22px;background:${esc(p.color)};border-color:${ST[st].ring};border-width:3px"></span>
+      <span class="swatch" style="width:22px;height:22px;background:${swatchBg(p.color, p.color2)};border-color:${ST[st].ring};border-width:3px"></span>
       <div style="flex:1"><b style="font-family:var(--font-sub);font-size:15px">${esc(p.type)}</b>
       <div style="font-size:11px;color:var(--bm-steel)">${ST[st].label}</div></div>
     </div>
@@ -4535,6 +5305,16 @@ function openPile(k) {
           <span style="font-size:11px;color:var(--bm-steel)">${f === p.block
         ? "Tap to bring the rest of the site back" : "Hides the rest of the site. Less to read, and the map moves more smoothly"}</span></div></div>`;
     })() : ""}
+
+    ${(() => {
+      /* Same pad as the crew gets. Walk mode does its own stepping, so it stays out of the way
+         there; everywhere else it beats hunting for the next dot on the map. */
+      if (S.walk.on) return "";
+      const pad = neighborPad(p, true);
+      if (!pad.some(Boolean)) return "";
+      return `<div class="divider"></div>
+        <div class="section-title">Move to the next pile</div>${padHTML(pad, false)}`;
+    })()}
 
     <div class="divider"></div>
     ${canInstall() ? `
@@ -4595,6 +5375,8 @@ function openPile(k) {
   noteFor = k;
   $("#fNt").onblur = saveText;
   walkWire(k, p, saveText);
+  /* saveText first, so a half-typed note is committed before the panel moves on */
+  wirePad($("#panelBody"), p, saveText);
 
   if (S.walk.on && S.walk.brg != null) {
     /* walking: back one pile, skip this one, or record it — every button keeps you moving
@@ -4677,16 +5459,23 @@ function openBulkCrew(arr) {
     <p class="hint">Remediation is recorded one pile at a time. Tap a single pile to flag it.<br>
       Tap <b>Select</b> in the toolbar to go back to opening piles one at a time.</p>`;
   const apply = patch => {
+    /* Read the note before anything can get in the way of the panel. If "who is recording"
+       has to be asked first, this whole function is held and replayed, and by then the panel
+       may have been rebuilt — so the typed note is captured now, not read again later. */
     const note = $("#uNt").value.trim();
-    beginAction(describePatch(patch, arr.length));
-    arr.forEach(p => {
-      const q = Object.assign({}, patch);
-      if (note) { const prev = (S.ov[p.k] && S.ov[p.k].nt) || ""; q.nt = prev && prev.indexOf(note) < 0 ? prev + "\n" + note : (prev || note); }
-      setPile(p.k, q);
-    });
-    endAction();
-    toast(arr.length.toLocaleString() + " piles updated · tap ↶ to undo", 4200);
-    openBulk();
+    const go = () => {
+      beginAction(describePatch(patch, arr.length));
+      arr.forEach(p => {
+        const q = Object.assign({}, patch);
+        if (note) { const prev = (S.ov[p.k] && S.ov[p.k].nt) || ""; q.nt = prev && prev.indexOf(note) < 0 ? prev + "\n" + note : (prev || note); }
+        setPile(p.k, q);
+      });
+      endAction();
+      toast(arr.length.toLocaleString() + " piles updated · tap ↶ to undo", 4200);
+      openBulk();
+    };
+    /* asked once for the whole selection, never once per pile */
+    if (requireIdentity(go)) go();
   };
   $("#uInst").onclick = () => apply({ st: 1 });
   $("#uNot").onclick = () => apply({ st: 0 });
@@ -4753,7 +5542,7 @@ function openBulk() {
     <table class="bm-table"><thead><tr><th>Spec</th><th>Piles</th><th>Installed</th><th>%</th></tr></thead><tbody>
     ${[...byType].sort((a, b) => b[1] - a[1]).map(([t, n]) => {
     let d = 0; arr.forEach(p => { if (p.type === t && isDone(p.k)) d++; });
-    return `<tr><td><span class="swatch" style="background:${esc((S.types.get(t) || {}).color || "#888")};width:11px;height:11px"></span> ${esc(t)}</td>
+    return `<tr><td><span class="swatch" style="background:${typeBg(t)};width:11px;height:11px"></span> ${esc(t)}</td>
       <td>${n.toLocaleString()}</td><td>${d.toLocaleString()}</td><td>${Math.round(d / n * 100)}%</td></tr>`;
   }).join("")}</tbody></table>
     <div class="divider"></div>
@@ -4777,16 +5566,20 @@ function openBulk() {
       Tapping a single pile toggles it either way. Tap <b>Multi-Select</b> in the toolbar to go back to opening piles one at a time.</p>
   `;
   const apply = patch => {
+    /* captured before anything can rebuild the panel — see the note on the other bulk apply */
     const note = $("#uNt").value.trim();
-    beginAction(describePatch(patch, arr.length));      // the whole bulk undoes as one
-    arr.forEach(p => {
-      const q = Object.assign({}, patch);
-      if (note) { const prev = (S.ov[p.k] && S.ov[p.k].nt) || ""; q.nt = prev && prev.indexOf(note) < 0 ? prev + "\n" + note : (prev || note); }
-      setPile(p.k, q);        // crew, driver and device come from the device settings
-    });
-    endAction();
-    toast(arr.length.toLocaleString() + " piles updated · tap ↶ to undo", 4200);
-    openBulk();
+    const go = () => {
+      beginAction(describePatch(patch, arr.length));      // the whole bulk undoes as one
+      arr.forEach(p => {
+        const q = Object.assign({}, patch);
+        if (note) { const prev = (S.ov[p.k] && S.ov[p.k].nt) || ""; q.nt = prev && prev.indexOf(note) < 0 ? prev + "\n" + note : (prev || note); }
+        setPile(p.k, q);      // crew, driver and device come from the device settings
+      });
+      endAction();
+      toast(arr.length.toLocaleString() + " piles updated · tap ↶ to undo", 4200);
+      openBulk();
+    };
+    if (requireIdentity(go)) go();      // asked once for the selection, not once per pile
   };
   if (canInstall()) {
     $("#uInst").onclick = () => apply({ st: 1 });
@@ -4956,6 +5749,137 @@ const ringPlaceKey = r => {
   const m = r.mid || labelPoint(r.ring);
   return m[0].toFixed(4) + "," + m[1].toFixed(4);
 };
+/* ============================================================
+   Outlines traced round the piles
+
+   A CAD block-boundary export often carries no closed polygon per block. Freshwater's has 41
+   closed shapes and every one is a fragment of detail — 0.0 to 0.1 ha, with not one pile inside
+   any of them. So there was nothing to label, no badge on any block, and no outline on the map,
+   even though every pile knows its block perfectly well from its Point ID.
+
+   The piles themselves describe the block, so the outline is traced round them. Lay a square
+   over every cell that holds a pile; an edge shared by two occupied cells is interior and gets
+   dropped; what is left is the boundary. Chain that into a loop and strip the collinear points
+   and the result contains exactly that block's piles and nobody else's.
+
+   Deliberately not a convex hull. A hull round an L-shaped block covers ground belonging to its
+   neighbour, and two neighbours' hulls overlap — so a pile would sit inside two outlines, and
+   both the badge and the labelling would then be guesses.
+   ============================================================ */
+function blockHulls(cellM) {
+  if (!S.piles.length) return [];
+  const kx = 111320 * Math.cos(S.piles[0].lat * Math.PI / 180);
+  /* The cell has to be at least the row pitch, or the rows do not join up and a block comes out
+     as twenty separate strips. Beyond that, smaller is better: a big cell straddles the line
+     between two blocks. */
+  const cell = cellM || clamp(Math.max(ROW_GAP, SPACING_M) * 1.35, 8, 40);
+
+  /* Every cell goes to exactly one block — whichever has most piles in it. Letting a cell
+     belong to every block with a pile in it meant neighbours' outlines overlapped, so a pile
+     could sit inside two of them and both the badge and the labelling became a guess. */
+  const tally = new Map();                       // cell -> Map(block -> count)
+  for (const p of S.piles) {
+    const b = p.block;
+    if (b == null || b === "" || b === "Unassigned") continue;
+    const k = Math.floor(p.lon * kx / cell) + ":" + Math.floor(p.lat * 111320 / cell);
+    let m = tally.get(k);
+    if (!m) tally.set(k, m = new Map());
+    m.set(b, (m.get(b) || 0) + 1);
+  }
+  const byBlock = new Map();
+  for (const [k, m] of tally) {
+    let best = null, bn = 0;
+    for (const [b, n] of m) if (n > bn) { bn = n; best = b; }
+    let s = byBlock.get(best);
+    if (!s) byBlock.set(best, s = new Set());
+    s.add(k);
+  }
+  const out = [];
+  for (const [b, cells] of byBlock) {
+    const has = (cx, cy) => cells.has(cx + ":" + cy);
+    /* Each cell contributes the edges it does not share with a neighbour, wound the same way
+       round every cell so the pieces chain into loops that all run the same direction. */
+    const edges = new Map();                 // "vx:vy" -> [[vx,vy], ...]
+    const add = (a, c) => {
+      const k = a[0] + ":" + a[1];
+      let l = edges.get(k); if (!l) edges.set(k, l = []);
+      l.push(c);
+    };
+    for (const key of cells) {
+      const [cx, cy] = key.split(":").map(Number);
+      if (!has(cx, cy - 1)) add([cx, cy], [cx + 1, cy]);
+      if (!has(cx + 1, cy)) add([cx + 1, cy], [cx + 1, cy + 1]);
+      if (!has(cx, cy + 1)) add([cx + 1, cy + 1], [cx, cy + 1]);
+      if (!has(cx - 1, cy)) add([cx, cy + 1], [cx, cy]);
+    }
+    /* walk the edges into closed loops, consuming each one as it is used */
+    const loops = [];
+    for (const start of [...edges.keys()]) {
+      while ((edges.get(start) || []).length) {
+        const loop = [];
+        let cur = start.split(":").map(Number);
+        let guard = 0;
+        while (guard++ < 200000) {
+          const k = cur[0] + ":" + cur[1];
+          const nexts = edges.get(k);
+          if (!nexts || !nexts.length) break;
+          const nx = nexts.pop();
+          if (!nexts.length) edges.delete(k);
+          loop.push(cur);
+          cur = nx;
+          if (cur[0] + ":" + cur[1] === start) break;
+        }
+        if (loop.length > 3) loops.push(loop);
+      }
+    }
+    if (!loops.length) continue;
+    const area = l => {
+      let a = 0;
+      for (let i = 0; i < l.length; i++) {
+        const p = l[i], q = l[(i + 1) % l.length];
+        a += p[0] * q[1] - q[0] * p[1];
+      }
+      return Math.abs(a) / 2;
+    };
+    loops.sort((x, y) => area(y) - area(x));
+    /* Every loop is kept, not only the biggest. A block split by a road or a wetland is two
+       pieces of ground, and keeping the larger one alone left 681 of block 221's 1,429 piles
+       outside any outline — which is exactly the piles a coordinator would then be unable to
+       find. Tiny loops are dropped: those are the gap between two rows, not a piece of block. */
+    const big = area(loops[0]);
+    for (const raw of loops) {
+      if (area(raw) < big * 0.08) continue;
+      /* drop the points that carry no turn — a straight run of cells is two points, not twenty */
+      const keep = [];
+      for (let i = 0; i < raw.length; i++) {
+        const a = raw[(i - 1 + raw.length) % raw.length], p = raw[i], c = raw[(i + 1) % raw.length];
+        if ((p[0] - a[0]) * (c[1] - p[1]) !== (p[1] - a[1]) * (c[0] - p[0])) keep.push(p);
+      }
+      const ring = (keep.length > 2 ? keep : raw).map(v => [v[0] * cell / kx, v[1] * cell / 111320]);
+      ring.push(ring[0].slice());
+      out.push({
+        id: "h" + out.length, ring: ring, box: ringBox(ring), mid: labelPoint(ring),
+        area: ringAreaM2(ring), name: String(b), layer: "Traced from piles", traced: true
+      });
+    }
+  }
+  return orderRings(out);
+}
+
+/* How many of the outlines a project has actually hold piles. Nought means the export gave line
+   work rather than block polygons, and the outlines are of no use for labelling or badges. */
+function ringsWithPiles() {
+  let n = 0;
+  for (const r of (S.blockRings || [])) {
+    if (!r.ring || r.ring.length < 3) continue;
+    for (const p of S.piles) {
+      if (p.lon < r.box[0] || p.lon > r.box[2] || p.lat < r.box[1] || p.lat > r.box[3]) continue;
+      if (ptInRing(r.ring, p.lon, p.lat)) { n++; break; }
+    }
+  }
+  return n;
+}
+
 function ringsFrom(parsedRings) {
   const out = [];
   (parsedRings || []).forEach((r, i) => {
@@ -5005,6 +5929,97 @@ function focusRing(i) {
   }
   requestDraw();
 }
+/* Tapping the number on a block: how many piles are in it, what kind, and how far along.
+   Read-only — nothing here changes a record. */
+function openBlockSummary(ring) {
+  const name = ring && ring.name;
+  if (name == null || name === "") { toast("This outline has no number yet"); return; }
+  const s = blockStats(name);
+  S.hiRing = ring;
+  panelRefresh = () => { if (S.hiRing === ring) openBlockSummary(ring); };
+  requestDraw();
+  openPanel("Block " + name);
+
+  const region = S.regionOf.get(name) || "";
+  const done = s.done;
+  const pct = s.total ? Math.round(done / s.total * 100) : 0;
+  const rows = (m, colFor) => [...m].sort((a, b) => b[1] - a[1]).map(([k, n]) =>
+    `<div class="readrow"><span><span class="swatch" style="background:${colFor(k)};width:11px;height:11px"></span>
+      ${esc(k)}</span><b>${n.toLocaleString()}</b></div>`).join("");
+
+  if (!s.total) {
+    $("#panelBody").innerHTML = `<p class="hint" style="margin:0">This outline is numbered
+      <b>${esc(name)}</b>, but no pile is assigned to it yet. Under <b>Layers → Block outlines</b>,
+      apply the outlines to the piles and the counts appear here.</p>`;
+    $("#panelFoot").innerHTML = "";
+    const c = el("button", "btn wide", "Close");
+    c.onclick = () => { S.hiRing = null; closePanel(); requestDraw(); };
+    $("#panelFoot").append(c);
+    return;
+  }
+
+  $("#panelBody").innerHTML = `
+    ${region ? `<div class="readrow"><span>Region</span><b>${esc(region)}</b></div>` : ""}
+    <div class="home-stats" style="margin-top:8px">
+      <div class="home-stat"><b>${s.total.toLocaleString()}</b><span>Piles here</span></div>
+      <div class="home-stat accent"><b>${done.toLocaleString()}</b><span>In the ground</span></div>
+      <div class="home-stat"><b>${(s.total - done).toLocaleString()}</b><span>Still to go</span></div>
+    </div>
+    <div class="home-bar" style="margin:10px 0 4px"><i style="width:${pct}%"></i></div>
+    <div style="font-size:11px;color:var(--bm-steel);text-align:center">${pct}% of this block is in</div>
+
+    <div class="divider"></div>
+    <div class="section-title">Installation</div>
+    <div class="readrow"><span><span class="swatch" style="background:#6BA43A;width:11px;height:11px"></span>
+      Installed</span><b>${s.inst.toLocaleString()}</b></div>
+    <div class="readrow"><span><span class="swatch" style="background:#C40D3C;width:11px;height:11px"></span>
+      Recorded not installed</span><b>${s.notInst.toLocaleString()}</b></div>
+    <div class="readrow"><span><span class="swatch" style="background:#A5BAC9;width:11px;height:11px"></span>
+      Nobody has looked yet</span><b>${s.unrecorded.toLocaleString()}</b></div>
+
+    ${(s.remOpen || s.remFixed) ? `
+    <div class="divider"></div>
+    <div class="section-title">Remediation</div>
+    <div class="readrow"><span>Still open</span><b>${s.remOpen.toLocaleString()}</b></div>
+    <div class="readrow"><span>Completed</span><b>${s.remFixed.toLocaleString()}</b></div>
+    ${[...s.byRem].sort((a, b) => (b[1].open + b[1].fixed) - (a[1].open + a[1].fixed)).map(([k, e]) =>
+      `<div class="readrow"><span><span class="swatch" style="background:${REM_COLOR[k] || REM_FALLBACK};width:11px;height:11px"></span>
+        ${esc(k)}</span><b>${e.open ? e.open.toLocaleString() + " open" : ""}${e.open && e.fixed ? " · " : ""}${e.fixed ? e.fixed.toLocaleString() + " done" : ""}</b></div>`).join("")}` : ""}
+
+    <div class="divider"></div>
+    <div class="section-title">What is in here</div>
+    ${rows(s.byType, t => typeBg(t))}
+    ${s.bySym.size > 1 ? `<div class="section-title" style="margin-top:10px">By marker</div>
+      ${[...s.bySym].sort((a, b) => b[1] - a[1]).map(([k, n]) =>
+        `<div class="readrow"><span>${symSVG(k, "#00263A", 14)}
+          ${esc((SYMBOLS[k] || SYMBOLS.array).label)}</span><b>${n.toLocaleString()}</b></div>`).join("")}` : ""}
+    ${s.withNote ? `<div class="readrow"><span>Piles with a note</span><b>${s.withNote.toLocaleString()}</b></div>` : ""}
+
+    ${s.crews.size ? `<div class="divider"></div>
+      <div class="section-title">Who has worked here</div>
+      ${[...s.crews].sort((a, b) => b[1] - a[1]).map(([c, n]) =>
+        `<div class="readrow"><span>${esc(c)}</span><b>${n.toLocaleString()}</b></div>`).join("")}
+      ${s.lastTs ? `<div class="readrow"><span>Last recorded</span><b>${fmtDate(s.lastTs)}</b></div>` : ""}` : ""}
+  `;
+  wrapTables($("#panelBody"));
+  $("#panelBody").scrollTop = 0;
+
+  $("#panelFoot").innerHTML = "";
+  const only = el("button", "btn wide", focusedBlock() === name ? "Show every block" : "Show only this block");
+  only.onclick = () => {
+    if (focusedBlock() === name) showAllBlocks(); else focusBlock(name);
+    openBlockSummary(ring);
+  };
+  const zoom = el("button", "btn blue wide", "Zoom to it");
+  zoom.onclick = () => {
+    fitBounds({
+      wx0: lon2wx(ring.box[0]), wx1: lon2wx(ring.box[2]),
+      wy0: lat2wy(ring.box[3]), wy1: lat2wy(ring.box[1])
+    }, 40);
+  };
+  $("#panelFoot").append(only, zoom);
+}
+
 function selectRingObj(r) {
   const i = S.blockRings.indexOf(r);
   if (i < 0) return;
@@ -5071,14 +6086,58 @@ function openBlocksFromId() {
   $("#panelFoot").append(a);
 }
 
+/* do the piles already know which block they are in? */
+const blocksKnown = () => S.blocks.size > 1
+  && S.piles.some(p => p.block && p.block !== "Unassigned");
+
+/* Offered when the outlines cannot be labelled — none of them holds a pile — but the piles know
+   their blocks anyway. Replaces the outlines with ones traced round the piles, so every block
+   gets something to label, a number on the map, and a tappable badge. */
+function offerTracedOutlines(junk) {
+  const hulls = blockHulls();
+  if (!hulls.length) return toast("Could not trace outlines from these piles");
+  const blocks = new Set(hulls.map(h => h.name)).size;
+  modal("Trace the outlines round the piles?", `
+    <p class="hint" style="margin:0 0 10px">${junk
+      ? `This project has <b>${junk}</b> closed shapes from the drawing, and not one of them has a
+         pile inside it — a CAD boundary export usually comes through as line work rather than one
+         polygon per block. There is nothing there to label.`
+      : `This project has no block outlines at all.`}</p>
+    <p class="hint" style="margin:0 0 10px">The piles already know their blocks, so an outline can
+      be drawn round each one instead. That gives every block a number on the map, a tappable
+      badge, and something to rename.</p>
+    <div class="readrow"><span>Blocks</span><b>${blocks.toLocaleString()}</b></div>
+    <div class="readrow"><span>Outlines to draw</span><b>${hulls.length.toLocaleString()}</b></div>
+    <p class="hint">A block split by a road comes out as two pieces, both carrying its number.
+      The drawing itself is untouched — the CAD stays on the map exactly as it is.</p>`,
+    [{ t: "Cancel", cls: "btn", fn: closeModal },
+    {
+      t: "Trace them", cls: "btn pri", fn: async () => {
+        S.blockRings = hulls;
+        S.blockRings.forEach(r => { if (r.ring) r.mid = labelPoint(r.ring); });
+        await kvPut("blockRings", S.blockRings);
+        closeModal();
+        toast(hulls.length + " outlines traced round " + blocks + " blocks", 4200);
+        requestDraw();
+        openBlockSetup();
+      }
+    }]);
+}
+
 function openBlockSetup() {
   const rs = S.blockRings;
   /* No usable outlines is not a dead end if the IDs carry the block — which on a CAD export is
      the normal case, because the boundaries come through as line work rather than polygons. */
   if (!rs.length) {
+    if (blocksKnown()) return offerTracedOutlines();
     if (idBlockOptions().length) return openBlocksFromId();
     return toast("No block outlines loaded. Import the outline KMZ first");
   }
+  /* Outlines that hold no piles are no use for labelling: a CAD boundary export often comes
+     through as fragments of detail rather than one polygon per block, and Freshwater's 41 are
+     0.0 to 0.1 ha with nothing inside any of them. Labelling those would name the wrong thing,
+     so if the piles already know their blocks, offer to trace the outlines round them instead. */
+  if (!ringsWithPiles() && blocksKnown()) return offerTracedOutlines(rs.length);
   if (rs[0].n == null) ringPileCounts();
   blkIdx = clamp(blkIdx, 0, rs.length - 1);
   const cur = rs[blkIdx];
@@ -5200,7 +6259,8 @@ function recountProject() {
   const types = new Map(), blocks = new Map();
   for (const p of S.piles) {
     if (!types.has(p.type)) types.set(p.type, {
-      color: p.color, n: 0, on: (S.types.get(p.type) || { on: true }).on
+      color: p.color, color2: p.color2 || null, n: 0,
+      on: (S.types.get(p.type) || { on: true }).on
     });
     types.get(p.type).n++;
     const b = p.block == null ? "Unassigned" : p.block;
@@ -5240,7 +6300,7 @@ async function persistProject() {
   if (!S.proj) return;
   await kvPut("proj", S.proj);
   await persistPiles();
-  await kvPut("design", S.design.map(f => [f.t, f.l, f.n, f.c, f.sc, f.sw, f.sf]));
+  await kvPut("design", packedDesign());
   await kvPut("blockRings", S.blockRings || []);
   await kvPut("ov", S.ov);
 }
@@ -5338,7 +6398,9 @@ async function removeBlockOutlines() {
    device settings stay, because the next project wants those anyway. */
 async function clearDevice(alsoTiles, alsoImagery) {
   clearTimeout(_ovT);          // a debounced record save must not land after the wipe
-  for (const k of ["proj", "piles", "design", "blockRings", "regions", "ov"]) { try { await kvDel(k); } catch (e) { } }
+  /* the history goes too: a log of a project the device no longer has would list dates that
+     show nothing at all */
+  for (const k of ["proj", "piles", "design", "blockRings", "regions", "ov", HIST_KEY]) { try { await kvDel(k); } catch (e) { } }
   if (alsoImagery) {
     for (const o of S.overlays) { try { await tileDelPrefix("ov:" + o.id + "/"); } catch (e) { } }
     S.overlays = [];
@@ -5355,6 +6417,12 @@ async function clearDevice(alsoTiles, alsoImagery) {
   S.walk = { on: false, brg: null, turn: 1, quick: "in", axis: 0 };
   S.filt = FILT_DEFAULT();
   GRID = null; SPACING_M = 6.7; ROW_OK = false; ROW_BRG = 0;
+  /* The crew name itself is left alone — it belongs to the device, and someone starting over
+     on their own tablet should not have to retype it. But it is no longer confirmed against
+     anything, so the next job asks. That is what makes handing a machine on safe. */
+  S.dev.okFp = "";
+  pendingAction = null;
+  review = null; updateReviewBar();
   undoStack = []; redoStack = []; updateUndoBtn();
   saveSettings();
   $("#emptyState").style.display = "";
@@ -5642,7 +6710,7 @@ function openLegend() {
     const d = doneBy.get(t) || 0;
     return `<div class="lgrow ${o.on ? "" : "off"}" data-t="${esc(t)}">
       <div class="chk ${o.on ? "on" : ""}">${o.on ? "✓" : ""}</div>
-      <span class="swatch" style="background:${esc(o.color)}"></span>
+      <span class="swatch" style="background:${swatchBg(o.color, o.color2)}"></span>
       <div class="nm">${esc(t)}</div>
       <div class="ct">${d.toLocaleString()} / ${o.n.toLocaleString()}</div></div>`;
   }).join("");
@@ -6118,6 +7186,88 @@ function regionFilterRows() {
       <div class="ct">▸</div></div>`;
 }
 
+/* How far along every block is, in one pass. Called to build the block list, which on a real
+   site is fifty-odd rows — asking for each block separately would walk the whole pile array
+   once per row. */
+function blockProgress() {
+  const m = new Map();
+  for (const [t, o] of S.blocks) m.set(t, { n: 0, done: 0 });
+  for (const p of S.piles) {
+    const e = m.get(p.block); if (!e) continue;
+    e.n++;
+    const st = statusOf(p.k);
+    if (st === "in" || st === "fixed") e.done++;
+  }
+  return m;
+}
+
+/* ============================================================
+   Choosing blocks
+
+   The same shape as the region filter above it, with two differences that matter.
+
+   It is a fold, shut by default. A site here carries fifty-seven blocks, and an open list of
+   fifty-seven rows pushes everything below it off the screen — on a phone it would bury the
+   remediation and note filters entirely.
+
+   And it takes more than one. Blocks are how the schedule talks, and a crew is rarely working
+   exactly one: "how are 36, 37 and 38 doing" is the ordinary question, and it could not be
+   asked before this.
+
+   It drives the block visibility the map already filters on rather than introducing a second
+   list of chosen blocks. That state is already honoured by passFilt through visBlock, already
+   counted by filtersActive, and already what "Show only this block" sets — so a block hidden
+   here and a block hidden from a pile panel are the same thing, and there is no way for the
+   two to disagree.
+   ============================================================ */
+function blockFilterRows() {
+  if (S.blocks.size < 2) return "";
+  /* With a region chosen, only its blocks — which is most of what makes the region filter
+     worth having, rather than scrolling fifty-seven rows to find the four that matter. */
+  const inRegion = t => !S.filt.region || (S.regionOf.get(t) || NO_REGION) === S.filt.region;
+  const list = [...S.blocks].filter(([t]) => inRegion(t));
+  const title = `<div class="section-title">Block${S.filt.region
+    ? " in " + esc(S.filt.region === NO_REGION ? "no region" : S.filt.region) : ""}</div>`;
+  if (!list.length) return title + `<p class="hint">No blocks in this region yet.</p>`;
+
+  const prog = blockProgress();
+  const on = list.filter(([t, o]) => o.on);
+  const all = on.length === list.length;
+  const pick = on.reduce((a, [t]) => a + (prog.get(t) || { n: 0 }).n, 0);
+  const pickDone = on.reduce((a, [t]) => a + (prog.get(t) || { done: 0 }).done, 0);
+
+  const row = ([t, o]) => {
+    const e = prog.get(t) || { n: 0, done: 0 };
+    const pct = e.n ? Math.round(e.done / e.n * 100) : 0;
+    return `<div class="lgrow" data-blk-f="${esc(t)}">
+      <div class="chk ${o.on ? "on" : ""}">${o.on ? "✓" : ""}</div>
+      <div class="nm">${esc(t)}${(!S.filt.region && S.regionOf.has(t))
+        ? `<br><span style="font-size:11px;color:var(--bm-steel)">${esc(S.regionOf.get(t))}</span>` : ""}</div>
+      <div class="ct">${e.n.toLocaleString()} · ${pct}%</div></div>`;
+  };
+
+  /* The summary has to say what is chosen while the fold is shut, or the only way to find out
+     is to open it — and a filter you cannot see is how a coordinator ends up reading a partial
+     map as the whole site. */
+  const sum = all
+    ? `Every block <span class="ct">${list.length} blocks · ${pick.toLocaleString()} piles</span>`
+    : `<b style="color:var(--bm-orange)">${on.length} of ${list.length} blocks</b>
+       <span class="ct">${pick.toLocaleString()} piles · ${pick ? Math.round(pickDone / pick * 100) : 0}% in</span>`;
+
+  return title + `<details class="fold" id="fBlkFold"${blkFoldOpen ? " open" : ""}>
+    <summary>${sum}</summary>
+    <div class="foldbody">
+      <div class="lgrow" data-blk-f="__all__"><div class="chk ${all ? "on" : ""}">${all ? "✓" : ""}</div>
+        <div class="nm"><b>Every block</b></div>
+        <div class="ct">${list.length}</div></div>
+      ${list.map(row).join("")}
+    </div></details>`;
+}
+/* Whether each fold was open, so rebuilding the panel after a tap does not shut it again.
+   The panel is redrawn from scratch on every change, so without this a coordinator ticking
+   three blocks would have the list slam shut under them twice. */
+let blkFoldOpen = false, jumpFoldOpen = false;
+
 function openFilters() {
   if (crewMode()) return openFiltersCrew();
   panelRefresh = openFilters;
@@ -6136,6 +7286,7 @@ function openFilters() {
     <div class="lgrow" data-f="mine"><div class="chk ${S.filt.mine ? "on" : ""}">${S.filt.mine ? "✓" : ""}</div><div class="nm">Piles this device recorded</div></div>
     <p class="hint">Filters change what you can tap and what box-select picks up, handy for sweeping a block for leftovers at the end of the shift.</p>
     ${regionFilterRows()}
+    ${blockFilterRows()}
     ${remTypeRows()}
     ${noteRows()}
     ${(() => {
@@ -6168,13 +7319,17 @@ function openFilters() {
     <div class="lgrow" id="fBlocks"><div class="nm"><b>Count piles in an area</b><br>
       <span style="font-size:11px;color:var(--bm-steel)">Pick whole blocks and get the total and percent complete</span></div>
       <div class="ct">▸</div></div>
-    <div class="section-title">Jump to a block${S.filt.region ? " in " + esc(S.filt.region === NO_REGION ? "no region" : S.filt.region) : ""}</div>
     ${(() => {
-      /* With a region chosen this is the handful of blocks in it rather than all 57 — which is
-         most of what makes the region filter worth having on a phone. */
+      /* Jumping the map to a block is a different job from choosing which blocks to show, so it
+         stays — but folded. Two lists of fifty-seven rows open at once pushed everything above
+         them off the screen, which is how the block filter came to be hard to find at all. */
       const list = S.filt.region ? [...S.blocks].filter(([t]) => (S.regionOf.get(t) || NO_REGION) === S.filt.region) : [...S.blocks];
-      return list.map(([t, o]) => `<div class="lgrow" data-jump="${esc(t)}"><div class="nm">${esc(t)}${!S.filt.region && S.regionOf.has(t) ? `<br><span style="font-size:11px;color:var(--bm-steel)">${esc(S.regionOf.get(t))}</span>` : ""}</div><div class="ct">${o.n.toLocaleString()} ▸</div></div>`).join("")
+      const rows = list.map(([t, o]) => `<div class="lgrow" data-jump="${esc(t)}"><div class="nm">${esc(t)}${!S.filt.region && S.regionOf.has(t) ? `<br><span style="font-size:11px;color:var(--bm-steel)">${esc(S.regionOf.get(t))}</span>` : ""}</div><div class="ct">${o.n.toLocaleString()} ▸</div></div>`).join("")
         || '<p class="hint">No blocks in this region yet.</p>';
+      return `<details class="fold" id="fJumpFold"${jumpFoldOpen ? " open" : ""}>
+        <summary>Jump to a block${S.filt.region ? " in " + esc(S.filt.region === NO_REGION ? "no region" : S.filt.region) : ""}
+          <span class="ct">${list.length}</span></summary>
+        <div class="foldbody">${rows}</div></details>`;
     })()}`;
   $("#panelBody").querySelectorAll("[data-s]").forEach(n => n.onclick = () => { S.filt.status = n.dataset.s; saveSettings(); updateFilterBtn(); openFilters(); requestDraw(); });
   $("#panelBody").querySelectorAll("[data-f]").forEach(n => n.onclick = () => {
@@ -6188,6 +7343,35 @@ function openFilters() {
   });
   $("#panelBody").querySelectorAll("[data-reg-f]").forEach(n => n.onclick = () => {
     S.filt.region = S.filt.region === n.dataset.regF ? "" : n.dataset.regF;
+    saveSettings(); updateFilterBtn(); openFilters(); requestDraw();
+  });
+  if ($("#fBlkFold")) $("#fBlkFold").addEventListener("toggle", () => {
+    blkFoldOpen = $("#fBlkFold").hasAttribute("open");
+  });
+  if ($("#fJumpFold")) $("#fJumpFold").addEventListener("toggle", () => {
+    jumpFoldOpen = $("#fJumpFold").hasAttribute("open");
+  });
+  $("#panelBody").querySelectorAll("[data-blk-f]").forEach(n => n.onclick = () => {
+    const t = n.dataset.blkF;
+    const inRegion = b => !S.filt.region || (S.regionOf.get(b) || NO_REGION) === S.filt.region;
+    const list = [...S.blocks].filter(([b]) => inRegion(b));
+    if (t === "__all__") { S.blocks.forEach(o => o.on = true); }
+    else {
+      const allOn = list.every(([b, o]) => o.on);
+      if (allOn) {
+        /* Everything is on, which means "no block filter". Tapping one block then plainly means
+           show me that one — not hide it and leave fifty-six, which is never what anybody wants
+           from the first tap. */
+        S.blocks.forEach((o, b) => o.on = (b === t) || !inRegion(b));
+      } else {
+        const o = S.blocks.get(t);
+        /* Turning off the last one leaves an empty map, which reads as a broken app rather
+           than an empty answer. Treat it as clearing the filter instead. */
+        if (o.on && list.filter(([b, x]) => x.on).length === 1) S.blocks.forEach(x => x.on = true);
+        else o.on = !o.on;
+      }
+    }
+    blkFoldOpen = true;
     saveSettings(); updateFilterBtn(); openFilters(); requestDraw();
   });
   if ($("#fRegSetup")) $("#fRegSetup").onclick = () => gate("blocks", "Setting up regions", openRegions);
@@ -6351,8 +7535,8 @@ function packFile() {
     by: { crew: S.dev.crew || "", name: S.dev.name || "", role: role() },
     role: "guest",
     proj: S.proj, ov: S.ov,
-    piles: S.piles.map(p => [p.k, p.id, p.g, p.block, p.type, p.lat, p.lon, p.ex, p.size || "", p.sym || "array", p.sub || ""]),
-    design: S.design.map(f => [f.t, f.l, f.n, f.c, f.sc, f.sw, f.sf]),
+    ...packedPiles(),
+    ...packedDesign(),
     blockRings: S.blockRings || [],
     regions: serialRegions()
   };
@@ -6399,6 +7583,32 @@ function unheardRecords(mine, theirs) {
    it is now advice rather than a trap. */
 async function openPack(j, opts) {
   if (!j || j.fmt !== "bm-pile-pack" || !j.piles || !j.piles.length) return false;
+
+  /* A pack encoded by a newer build than this one.
+
+     This is the failure that brought us here, from the other side. The hosted crew page is
+     updated separately from the coordinator's file, so the two drift — and a pack written with
+     an encoding the page did not know used to be read as though it were the old plain format.
+     The piles survived that; the drawing did not, and the error it threw took the whole load
+     down and left the crew on the home screen with no message at all.
+
+     A build cannot be taught to read a format that was invented after it. It can say so. */
+  const tooNew = [];
+  if (j.enc && j.enc.v > CODEC_V) tooNew.push("the piles");
+  if (j.dEnc && j.dEnc.v > DENC_V) tooNew.push("the drawing");
+  if (tooNew.length) {
+    modal("This pack needs a newer PileHQ", `
+      <p class="hint" style="margin:0 0 10px">The way ${tooNew.join(" and ")} ${tooNew.length > 1 ? "are" : "is"}
+        stored in this pack is newer than this app can read, so opening it would leave you with
+        part of the job and no way to tell.</p>
+      <div class="readrow" style="border-top:0"><span>Pack made by</span><b>PileHQ ${esc(j.app || "unknown")}</b></div>
+      <div class="readrow"><span>This app</span><b>PileHQ ${APP_VER}</b></div>
+      <p class="hint" style="margin-top:10px">Close every tab of this app and open the address again
+        to pick up the current version. If it still says this, the hosted page needs republishing —
+        ask whoever sent the pack.</p>`,
+      [{ t: "Close", cls: "btn pri", fn: closeModal }]);
+    return true;
+  }
   const same = !!(S.proj && j.proj && S.proj.fp === j.proj.fp);
   /* deep copy: activateProject is about to clear S.ov */
   const mine = same ? JSON.parse(JSON.stringify(S.ov || {})) : null;
@@ -6420,7 +7630,7 @@ async function openPack(j, opts) {
     return true;
   }
 
-  const built = restorePiles(j.piles, j.proj, j.design);
+  const built = restorePiles(j.piles, j.proj, j.design, j.enc, j.dEnc);
   await activateProject(built, false);
   S.ov = j.ov || {};
   let kept = 0;
@@ -6438,7 +7648,14 @@ async function openPack(j, opts) {
   await kvPut("blockRings", S.blockRings);
   await saveRegions();
   setRole("guest");
-  refreshKPI(); showHome(false); requestDraw();
+  /* Straight onto the map, framed on the site. showHome(false) is what makes the canvas
+     measurable for the first time, so the fit has to come after it — asked for before, while the
+     home screen still had the map hidden, it fell back to zoom 1 and the crew was handed an
+     apparently empty map with the whole job inside one pixel. */
+  refreshKPI();
+  showHome(false);
+  fitBounds(S.proj.bounds, 50);
+  requestDraw();
   const recs = Object.keys(S.ov).filter(k => S.ov[k] && S.ov[k].ts).length;
   modal("Ready to work", `
     <div class="readrow" style="border-top:0"><span>Project</span><b>${esc(S.proj.name)}</b></div>
@@ -6452,7 +7669,10 @@ async function openPack(j, opts) {
     <p class="hint">This device is set to <b>Guest</b>: record piles, walk rows and export the day.
       The project itself cannot be changed from here. Set the crew name under <b>Crew</b> before you start,
       that is what stamps every pile you record.</p>`,
-    [{ t: "Start", cls: "btn pri", fn: () => { closeModal(); openCrew(); } }]);
+    /* A new pack on a device is the handover case, so ask who is recording rather than showing
+       the plain settings screen — and answering it means they are not asked again on the first
+       pile they tap. */
+    [{ t: "Start", cls: "btn pri", fn: () => { closeModal(); openCrew(true); } }]);
   return true;
 }
 
@@ -6797,7 +8017,13 @@ function buildName() {
    The one thing that can change and is not in the bake is which block a pile belongs to, if a
    coordinator relabels one. That is saved as a small overlay of just the piles that moved,
    rather than by writing the whole array back. */
-const pileRows = () => S.piles.map(p => [p.k, p.id, p.g, p.block, p.type, p.lat, p.lon, p.ex, p.size || "", p.sym || "array", p.sub || ""]);
+/* One shape for every file and every write: the compact rows plus the key that decodes them.
+   Spread into whatever is being built, so a pack, a backup and the device store cannot drift
+   apart the way the backup did when it was written out by hand. */
+const packedPiles = () => { const e = encodePiles(S.piles); return { piles: e.rows, enc: e.enc }; };
+/* the same for the drawing: one shape for every file and every write */
+const packedDesign = () => { const e = encodeDesign(S.design); return { design: e.rows, dEnc: e.enc }; };
+const pileRows = () => packedPiles();
 let bakedBlockOf = null;          // block per pile as the bake shipped it
 
 async function persistPiles() {
@@ -6812,7 +8038,7 @@ async function persistPiles() {
 }
 
 async function loadBaked(j) {
-  const built = restorePiles(j.piles, j.proj, j.design);
+  const built = restorePiles(j.piles, j.proj, j.design, j.enc, j.dEnc);
   await activateProject(built, false, true);        // do not write the layout back out
   bakedBlockOf = new Map(S.piles.map(p => [p.k, p.block]));
   /* any blocks the coordinator has relabelled since the file was built */
@@ -7084,10 +8310,37 @@ function openSetCodes() {
     }]);
 }
 
-function openCrew() {
-  modal("This device", `
+/* ============================================================
+   Who is recording
+
+   The crew name, driver and person live on the device, never in the file — so a coordinator
+   file emailed on carries no name with it. The catch is the other direction. A browser keeps
+   these per machine, and a page opened off a disk shares one storage area with every other
+   local page, so a file opened on a machine where somebody else has used PileHQ silently
+   adopts that person's crew and driver, and stamps them onto every pile recorded next. Wrong
+   attribution, written into the permanent record, with nothing on screen to say so.
+
+   So identity is confirmed against the project. `okFp` holds the fingerprint of the job it
+   was last confirmed for: open a different job, or a job on a machine that has never had this
+   one, and the app asks who is recording before taking any of it on trust. Confirming an
+   inherited name is one tap, which is the common case on the coordinator's own laptop. */
+const identityOK = () => !!S.proj && S.dev.okFp === S.proj.fp;
+/* mark the crew and driver as agreed for the job now loaded */
+function confirmIdentity() { if (S.proj) S.dev.okFp = S.proj.fp; }
+
+function openCrew(confirming) {
+  /* Something was found in this browser that did not come from this job — usually the
+     coordinator's own earlier session, sometimes genuinely somebody else. */
+  const inherited = confirming && !!(S.dev.crew || S.dev.driver || S.dev.name);
+  modal(confirming ? (inherited ? "Is this still you?" : "Who is recording?") : "This device", `
+    ${confirming ? `<p class="hint" style="margin:0 0 12px">${inherited
+      ? `This browser already had a crew saved in it. It did not come from this file — it is kept on
+         this computer, not in the file that was sent to you. Check it before recording, because
+         whatever is here gets stamped on every pile.`
+      : `Every pile recorded from this device is stamped with these. Fill them in before starting so
+         the end-of-day merge and the per-driver numbers read properly.`}</p>` : `
     <p class="hint" style="margin:0 0 12px">Filled in once. Every pile you record from this device is stamped with
-      these automatically. There is nothing to type on the pile itself.</p>
+      these automatically. There is nothing to type on the pile itself.</p>`}
     <div class="field"><label>Crew name</label>
       <input id="cCrew" value="${esc(S.dev.crew)}" placeholder="e.g. Crew 2"></div>
     <div class="field"><label>Driver / rig</label>
@@ -7104,12 +8357,17 @@ function openCrew() {
     <div class="readrow"><span>App version</span><b>${APP_VER}</b></div>
     <p class="hint">Give each crew a different crew name. That is what makes the end-of-day merge readable and
       drives the per-driver production numbers. Change the driver here whenever the rig changes.</p>`,
-    [{ t: "Cancel", cls: "btn", fn: closeModal },
-    {
-      t: "Save", cls: "btn pri", fn: () => {
+    (() => {
+      const save = () => {
         S.dev.crew = $("#cCrew").value.trim(); S.dev.name = $("#cName").value.trim();
         S.dev.driver = $("#cDriver").value.trim();
+        /* Answering it counts as confirming it, however it was reached, so the coordinator is
+           not asked twice for the same job. */
+        confirmIdentity();
         saveSettings(); updateCrewBtn(); closeModal();
+        /* carry out whatever raised the question, now that it can be stamped properly */
+        const held = pendingAction; pendingAction = null;
+        if (held && identityOK()) held();
         if (S.cur) openPile(S.cur);
         /* saving all three blank used to toast "Recording as not set", which reads as though
            something went right. Say the actual consequence instead. */
@@ -7117,9 +8375,23 @@ function openCrew() {
           ? "No crew name set. Piles will record without one — tap Crew to add it"
           : "Recording as " + stampLine(), 4200);
         requestDraw();
-      }
-    }]);
+      };
+      /* No Cancel while confirming. Dismissing the question would leave the app recording
+         under a name nobody has agreed to, which is the thing being prevented. Clearing the
+         fields is offered instead, so there is always a way out that is not silent. */
+      if (!confirming) return [{ t: "Cancel", cls: "btn", fn: closeModal }, { t: "Save", cls: "btn pri", fn: save }];
+      return [
+        ...(inherited ? [{
+          t: "Not me", cls: "btn", fn: () => {
+            $("#cCrew").value = ""; $("#cDriver").value = ""; $("#cName").value = "";
+            $("#cCrew").focus();
+          }
+        }] : []),
+        { t: inherited ? "Yes, that is me" : "Start recording", cls: "btn pri", fn: save }
+      ];
+    })());
   $("#cRole").onclick = openRoles;
+  if (confirming) lockModal();
 }
 
 /* ============================================================
@@ -7943,8 +9215,11 @@ function exportBackup() {
   const j = {
     fmt: "bm-pile-backup", v: 1, app: APP_VER, at: nowTs(), dev: S.dev,
     proj: S.proj, ov: S.ov,
-    piles: S.piles.map(p => [p.k, p.id, p.g, p.block, p.type, p.lat, p.lon, p.ex, p.size || ""]),
-    design: S.design.map(f => [f.t, f.l, f.n, f.c, f.sc, f.sw, f.sf]),
+    /* This wrote nine slots per pile and stopped, so the symbol and the subtype were quietly
+       dropped from every backup — restore a season from one and every pile came back as a
+       plain array pile. It goes through the same encoder as everything else now. */
+    ...packedPiles(),
+    ...packedDesign(),
     blockRings: S.blockRings || [],
     regions: serialRegions()
   };
@@ -8014,6 +9289,205 @@ function mergeRecords(recs, srcLabel, stats, only) {
     if (r.conflict) stats.conflicts.push({ k, kept: srcLabel, keptRec: inc, lostRec: cur });
   }
 }
+/* ============================================================
+   The site as it was on a given day
+
+   The coordinator's own file is the live picture: crews send their day in, it is merged, and
+   what the coordinator opens tomorrow morning is everything recorded so far. That much needs
+   no history — it is simply the records, kept on the device.
+
+   Looking backwards is a different problem, and it cannot be solved from the live records.
+   Only the newest edit per pile is kept, by design: that is what makes two crews merging
+   safe. So a pile driven on Monday and corrected on Wednesday holds Wednesday's answer and
+   nothing else, and no amount of filtering on timestamps will recover Monday's. The past has
+   to be written down as it happens or it is gone.
+
+   So each merge stores that day's status. Stored as a delta against the day before — only the
+   piles whose status actually changed — because a season of full snapshots of 19,551 piles
+   would be tens of megabytes and most of it identical.
+
+   A day is keyed by its date, and merging twice in one evening replaces that day rather than
+   adding a second entry for it. Re-merging after a correction is normal and should not leave
+   two versions of the same Tuesday.
+   ============================================================ */
+const HIST_KEY = "history";
+
+/* The fields that make up a pile's status. Deliberately not the whole record: `byName`, the
+   device id and the timestamps change without the status changing, and including them would
+   make every day a full snapshot again. */
+const HIST_FIELDS = ["st", "rm", "rf", "rt", "nt", "cr", "dr", "day", "dayR"];
+function histSlice(o) {
+  if (!o) return null;
+  const out = {};
+  let any = false;
+  for (const f of HIST_FIELDS) {
+    if (o[f] === undefined || o[f] === "" || o[f] === 0) continue;
+    out[f] = o[f]; any = true;
+  }
+  /* a record with nothing recorded on it is not a status */
+  return (any && (o.tsI || o.tsR)) ? out : null;
+}
+const sameSlice = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
+
+/* Rebuild the full status at a day by replaying every delta up to and including it. */
+function histAt(hist, day) {
+  const ov = {};
+  for (const d of (hist.days || [])) {
+    if (d.day > day) break;
+    for (const k in (d.set || {})) ov[k] = Object.assign({}, d.set[k]);
+    for (const k of (d.del || [])) delete ov[k];
+  }
+  return ov;
+}
+
+/* Add today to the history, or replace today if it is already there. */
+function histCapture(hist, day, ov) {
+  hist = hist && hist.days ? hist : { fmt: "bm-pile-history", v: 1, days: [] };
+  /* everything before today, so a second merge on the same evening compares against
+     yesterday rather than against its own earlier attempt */
+  const days = hist.days.filter(d => d.day < day);
+  const prev = {};
+  for (const d of days) {
+    for (const k in (d.set || {})) prev[k] = d.set[k];
+    for (const k of (d.del || [])) delete prev[k];
+  }
+  const set = {}, del = [];
+  for (const k in ov) {
+    const s = histSlice(ov[k]);
+    if (!s) continue;
+    if (!sameSlice(s, prev[k])) set[k] = s;
+  }
+  for (const k in prev) if (!histSlice(ov[k])) del.push(k);
+
+  days.push({ day: day, at: nowTs(), set: set, del: del });
+  days.sort((a, b) => a.day < b.day ? -1 : a.day > b.day ? 1 : 0);
+  /* keep any day after today untouched — re-merging an old date must not wipe what came after */
+  const later = hist.days.filter(d => d.day > day);
+  hist.days = days.concat(later);
+  hist.days.sort((a, b) => a.day < b.day ? -1 : a.day > b.day ? 1 : 0);
+  return hist;
+}
+
+/* Fold another history into this one. Used both when opening a history file and when
+   exporting, so two coordinators' files can be brought together without losing a day. */
+function histMerge(into, from) {
+  into = into && into.days ? into : { fmt: "bm-pile-history", v: 1, days: [] };
+  if (!from || !from.days) return into;
+  const byDay = new Map(into.days.map(d => [d.day, d]));
+  let added = 0, kept = 0;
+  for (const d of from.days) {
+    const have = byDay.get(d.day);
+    /* the later capture of the same date wins — a re-merge after a correction is the truer one */
+    if (!have || (d.at || 0) > (have.at || 0)) { byDay.set(d.day, d); added++; }
+    else kept++;
+  }
+  into.days = [...byDay.values()].sort((a, b) => a.day < b.day ? -1 : a.day > b.day ? 1 : 0);
+  into.added = added; into.kept = kept;
+  return into;
+}
+
+const loadHistory = async () => (await kvGet(HIST_KEY)) || { fmt: "bm-pile-history", v: 1, days: [] };
+const saveHistory = h => kvPut(HIST_KEY, h);
+
+async function exportHistory() {
+  if (!S.proj) return toast("Load a project first");
+  const h = await loadHistory();
+  if (!(h.days || []).length) return toast("Nothing logged yet. Merge a day first");
+  const j = {
+    fmt: "bm-pile-history", v: 1, app: APP_VER, at: nowTs(),
+    proj: { name: S.proj.name, fp: S.proj.fp, count: S.proj.count },
+    days: h.days
+  };
+  const days = h.days.length;
+  const nm = `${h.days[days - 1].day}_${slug(S.proj.name)}_HISTORY.pilehist.json`;
+  saveOrShare(nm, new Blob([JSON.stringify(j)], { type: "application/json" }));
+  toast(days + (days === 1 ? " day" : " days") + " exported · " + h.days[0].day + " to " + h.days[days - 1].day, 4600);
+}
+
+async function importHistory(f) {
+  if (!f) return;
+  if (!S.proj) return toast("Open the project first — the history holds records, not the layout");
+  let j;
+  try { j = JSON.parse(await f.text()); } catch (e) { return toast("That is not a history file"); }
+  if (j.fmt !== "bm-pile-history") return toast("That is not a PileHQ history file");
+  /* A history is meaningless against a different job: the keys would not match a single pile.
+     Warn rather than refuse, because a project rebuilt from the same survey gets a new
+     fingerprint and the coordinator is the one who knows whether it is the same site. */
+  const wrongJob = j.proj && S.proj.fp && j.proj.fp !== S.proj.fp;
+  const go = async () => {
+    const before = (await loadHistory()).days.length;
+    const h = histMerge(await loadHistory(), j);
+    await saveHistory(h);
+    closeModal();
+    toast(`${h.days.length} days on this device · ${h.days.length - before} added`, 4600);
+    openSync();
+  };
+  if (!wrongJob) return go();
+  modal("This history is from another project", `
+    <p class="hint" style="margin:0 0 8px">The file says it was logged against
+      <b>${esc((j.proj && j.proj.name) || "an unnamed project")}</b>, and the project open here is
+      <b>${esc(S.proj.name)}</b>. Pile keys will not match, so the dates would load but show nothing.</p>
+    <p class="hint">If this is the same site re-imported, carry on. Otherwise open the matching project first.</p>`,
+    [{ t: "Cancel", cls: "btn", fn: closeModal }, { t: "Load anyway", cls: "btn pri", fn: go }]);
+}
+
+/* ---------------- reviewing a past day ----------------
+
+   While a past day is on screen the app is showing something that is not true any more, so it
+   is read-only and it says so in a bar that cannot be missed. The live records are held aside
+   untouched and put back on the way out — the historical set is never written to storage, so
+   nothing a coordinator does while looking backwards can reach the real day.                */
+let review = null;                 // { day, liveOv } while reviewing, otherwise null
+const reviewing = () => !!review;
+
+async function enterReview(day) {
+  const hist = await loadHistory();
+  if (!(hist.days || []).some(d => d.day === day)) return toast("No status logged for " + day);
+  if (!review) review = { day: day, liveOv: S.ov };
+  else review.day = day;
+  S.ov = histAt(hist, day);
+  closePanel(); closeModal();
+  S.cur = null; S.sel.clear(); updateSelBar();
+  updateReviewBar(); refreshKPI(); requestDraw();
+  toast("Showing " + day + " · read-only", 4000);
+}
+
+function exitReview() {
+  if (!review) return;
+  S.ov = review.liveOv;
+  review = null;
+  closePanel(); closeModal();
+  S.cur = null;
+  updateReviewBar(); refreshKPI(); requestDraw();
+  toast("Back to today");
+}
+
+function updateReviewBar() {
+  const bar = $("#revBar");
+  if (!bar) return;
+  bar.classList.toggle("on", reviewing());
+  if (reviewing()) $("#revDay").textContent = review.day;
+  document.body.classList.toggle("reviewing", reviewing());
+}
+
+/* How many piles were in the ground at the end of each logged day, for the review list. */
+function histSummary(hist) {
+  const out = [];
+  const ov = {};
+  for (const d of (hist.days || [])) {
+    for (const k in (d.set || {})) ov[k] = d.set[k];
+    for (const k of (d.del || [])) delete ov[k];
+    let done = 0, rem = 0;
+    for (const k in ov) {
+      const o = ov[k];
+      if (o.rm && !o.rf) rem++;
+      else if (o.st) done++;
+    }
+    out.push({ day: d.day, done: done, rem: rem, changed: Object.keys(d.set || {}).length });
+  }
+  return out;
+}
+
 async function importSync(files) {
   if (!S.proj) return toast("Load the project KMZ on this device first");
   const stats = { added: 0, updated: 0, older: 0, same: 0, unknown: 0, conflicts: [], files: [], mismatch: [] };
@@ -8052,6 +9526,14 @@ async function importSync(files) {
   }
   endAction();
   await kvPut("ov", S.ov);
+  /* The end-of-day merge is the moment the day's status is settled, so that is when it goes
+     into the history. Doing it here rather than on a button means the log cannot develop gaps
+     because somebody forgot to press something. */
+  try {
+    const h = histCapture(await loadHistory(), dayStamp(new Date()), S.ov);
+    await saveHistory(h);
+    stats.histDays = (h.days || []).length;
+  } catch (e) { stats.histErr = e.message || String(e); }
   refreshKPI();
   showMergeReport(stats);
 }
@@ -8068,6 +9550,8 @@ function showMergeReport(s) {
       <div class="readrow"><span>Updated</span><b>${s.updated.toLocaleString()}</b></div>
       <div class="readrow"><span>Older, ignored</span><b>${s.older.toLocaleString()}</b></div>
       <div class="readrow"><span>Identical</span><b>${s.same.toLocaleString()}</b></div>
+      ${s.histDays ? `<div class="readrow"><span>Logged to history</span><b>${dayStamp(new Date())} · ${s.histDays} ${s.histDays === 1 ? "day" : "days"}</b></div>` : ""}
+      ${s.histErr ? `<div class="readrow"><span>History</span><b style="color:var(--bm-red)">not saved: ${esc(s.histErr)}</b></div>` : ""}
       <div class="readrow"><span>Unknown piles</span><b>${s.unknown.toLocaleString()}</b></div>
       <div class="readrow"><span>Conflicts</span><b>${s.conflicts.length.toLocaleString()}</b></div>
     </div>
@@ -8506,7 +9990,7 @@ function openDashboard() {
     ${[...S.types].map(([ty, o]) => {
     let dn = 0;
     S.piles.forEach(p => { if (p.type === ty && isDone(p.k)) dn++; });
-    return `<tr><td><span class="swatch" style="background:${esc(o.color)};width:11px;height:11px"></span> ${esc(ty)}</td>
+    return `<tr><td><span class="swatch" style="background:${swatchBg(o.color, o.color2)};width:11px;height:11px"></span> ${esc(ty)}</td>
       <td>${dn.toLocaleString()}</td><td>${o.n.toLocaleString()}</td><td>${Math.round(dn / o.n * 100)}%</td></tr>`;
   }).join("")}</tbody></table>`;
 
@@ -8521,9 +10005,11 @@ function openDashboard() {
 }
 
 /* ---------------- sync modal ---------------- */
+let syncHist = null;               // history read once per panel build, since the body is a template
 async function openSync() {
   const recs = Object.keys(S.ov).filter(k => S.ov[k] && S.ov[k].ts).length;
   const tc = await tileCount();
+  syncHist = await loadHistory();
   let done = 0, rem = 0;
   for (const k in S.ov) { if (S.ov[k].st) done++; if (S.ov[k].rm) rem++; }
 
@@ -8631,6 +10117,37 @@ async function openSync() {
     </div>
 
     <div class="divider"></div>
+    <div class="section-title">Progress history</div>
+    ${(() => {
+      const sum = histSummary(syncHist || { days: [] });
+      if (!sum.length) return `<p class="hint" style="margin:0 0 8px">Nothing logged yet. Each time you
+        <b>Merge crew files</b> the day's status is written to the history automatically, so this fills
+        itself as the job runs.</p>
+        <div class="grid2"><button class="btn" id="sHistImp">Open a history file</button></div>`;
+      const last = sum[sum.length - 1];
+      const rows = sum.slice().reverse().slice(0, 14).map(d =>
+        `<div class="lgrow" data-hday="${esc(d.day)}">
+          <div class="nm">${esc(d.day)}${reviewing() && review.day === d.day
+          ? ` <span style="color:var(--bm-orange);font-weight:700">· showing</span>` : ""}<br>
+            <span style="font-size:11px;color:var(--bm-steel)">${d.changed.toLocaleString()} piles changed that day</span></div>
+          <div class="ct">${d.done.toLocaleString()} in${d.rem ? " · " + d.rem + " flagged" : ""} ▸</div></div>`).join("");
+      return `<div class="readrow"><span>Days logged</span><b>${sum.length.toLocaleString()}</b></div>
+        <div class="readrow"><span>Latest</span><b>${esc(last.day)} · ${last.done.toLocaleString()} in the ground</b></div>
+        <div class="grid2">
+          <button class="btn" id="sHistExp">Export history</button>
+          <button class="btn" id="sHistImp">Open a history file</button>
+        </div>
+        <p class="hint" style="margin:8px 0">Tap a date to see the site as it was. It opens read-only —
+          nothing can be recorded until you come back to today.</p>
+        ${rows}
+        ${sum.length > 14 ? `<p class="hint">Showing the last 14 of ${sum.length} days. The exported file holds them all.</p>` : ""}
+        ${reviewing() ? `<button class="btn pri wide" id="sHistBack" style="width:100%;margin-top:8px">Back to today</button>` : ""}`;
+    })()}
+    <p class="hint">The history is records only, so it needs this project open to be read — which also means it
+      carries no pile layout and is small enough to mail. Export it each evening and keep the one file;
+      opening an older copy folds in any day this device is missing rather than replacing what is here.</p>
+
+    <div class="divider"></div>
     <div class="section-title">Offline map imagery</div>
     <div class="readrow"><span>Tiles cached on device</span><b>${tc.toLocaleString()}</b></div>
     <div class="readrow"><span>Drone layers</span><b>${S.overlays.length}</b></div>
@@ -8654,12 +10171,19 @@ async function openSync() {
   $("#sImp").onclick = () => gate("merge", "Merging crew files", () => pickFiles(fl => importSync([...fl])));
   $("#sXls").onclick = exportRemediationLog;
   $("#sBak").onclick = exportBackup;
+  if ($("#sHistExp")) $("#sHistExp").onclick = exportHistory;
+  if ($("#sHistImp")) $("#sHistImp").onclick = () => pickFiles(fl => importHistory(fl[0]));
+  if ($("#sHistBack")) $("#sHistBack").onclick = () => { exitReview(); openSync(); };
+  $("#modalBody").querySelectorAll("[data-hday]").forEach(n => n.onclick = async () => {
+    await enterReview(n.dataset.hday);
+    openSync();
+  });
   $("#sRes").onclick = () => pickFiles(async fl => {
     const f = fl[0]; if (!f) return;
     try {
       const j = JSON.parse(await f.text());
       if (j.fmt !== "bm-pile-backup") return toast("That is not a full backup file");
-      const built = restorePiles(j.piles, j.proj, j.design);
+      const built = restorePiles(j.piles, j.proj, j.design, j.enc, j.dEnc);
       await activateProject(built, false);
       S.ov = j.ov || {};
       /* a backup carries the block outlines and the regions as well as the records —
@@ -9380,7 +10904,7 @@ function pickPack() {
     catch (e) { return wrongFileHelp(f.name, describeWrongFile(f.name, head)); }
     if (await openPack(j)) return;
     if (j && j.fmt === "bm-pile-backup") {
-      const built = restorePiles(j.piles, j.proj, j.design);
+      const built = restorePiles(j.piles, j.proj, j.design, j.enc, j.dEnc);
       await activateProject(built, false);
       S.ov = j.ov || {};
       /* a backup carries the block outlines and the regions as well as the records —
@@ -9783,7 +11307,10 @@ addEventListener("keydown", e => {
   else if (e.key === "ArrowDown") { S.view.wy += step; requestDraw(); }
   else if (e.key === "+" || e.key === "=") setZoom(zoomLevel() + 1);
   else if (e.key === "-" || e.key === "_") setZoom(zoomLevel() - 1);
-  else if (e.key === "Escape") { closeModal(); closePanel(); S.cur = null; requestDraw(); }
+  else if (e.key === "Escape") {
+    if (modalLocked) return;                 // "who is recording" has to be answered
+    closeModal(); closePanel(); S.cur = null; requestDraw();
+  }
   else if (e.key === "h" || e.key === "H") showHome(!atHome());
   else if ((e.key === "i" || e.key === "I") && S.cur) { setPile(S.cur, { st: 1 }); openPile(S.cur); toast("Installed"); }
   else if ((e.key === "r" || e.key === "R") && S.cur) { const o = S.ov[S.cur] || {}; setPile(S.cur, { rm: o.rm ? 0 : 1 }); openPile(S.cur); }
@@ -9865,7 +11392,12 @@ async function init() {
   }
 
   const proj = await kvGet("proj");
-  const rows = await kvGet("piles");
+  /* The device used to hold a bare array of rows and now holds the compact form with its key
+     alongside. Both shapes have to load: a tablet that has not been opened since the change is
+     still carrying the old one, and losing its project would mean re-sending the pack. */
+  const stored = await kvGet("piles");
+  const rows = Array.isArray(stored) ? stored : ((stored && stored.piles) || null);
+  const storedEnc = Array.isArray(stored) ? null : (stored && stored.enc) || null;
   /* A standalone build carries its own project. Load it the first time the file is opened, or
      if the device is holding a different one — but not on every launch, or the day's records
      would be thrown away with it. Matching on the project fingerprint tells the two apart. */
@@ -9889,7 +11421,9 @@ async function init() {
     /* a standalone file opened off a disk is the case most likely to be on the small backend,
        and it takes this path rather than the one below, so check here too */
     checkStorage(false);
-    if (!S.dev.crew) setTimeout(openCrew, 600);
+    /* Asked when nothing is set, and equally when something is set that did not come from
+       this job — an inherited crew is the case that used to go through silently. */
+    if (!identityOK()) setTimeout(() => openCrew(true), 600);
     if (S.dev.gpsOn) setTimeout(() => toggleGps(true), 400);
     setInterval(saveSettings, 15000);
     addEventListener("beforeunload", saveSettings);
@@ -9900,7 +11434,12 @@ async function init() {
     return;
   }
   if (proj && rows && rows.length) {
-    const built = restorePiles(rows, proj, await kvGet("design"));
+    /* Design on the device is now the compact form too. Both shapes have to load: a tablet
+       that has not been opened since the change is still carrying the plain rows. */
+    const sd = await kvGet("design");
+    const dRows = Array.isArray(sd) ? sd : ((sd && sd.design) || null);
+    const dEnc = Array.isArray(sd) ? null : (sd && sd.dEnc) || null;
+    const built = restorePiles(rows, proj, dRows, storedEnc, dEnc);
     S.proj = built.proj; S.piles = built.piles; S.types = built.types; S.blocks = built.blocks;
     S.pLayers = built.pLayers;
     S.design = built.design; S.dLayers = built.dLayers; prepDesign();
