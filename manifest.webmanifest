@@ -1,6 +1,6 @@
 {
-  "name": "Barton Malow PileHQ Crew",
-  "short_name": "PileHQ Crew",
+  "name": "Barton Malow PileHQ Mobile",
+  "short_name": "PileHQ Mobile",
   "description": "Record pile installations and remediation in the field. Works with no signal.",
   "id": "./",
   "start_url": "./",

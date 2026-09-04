@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Pile Tracker</title>
+<title>PileHQ</title>
 <!--
   Anything on this site that is not a real file lands here, and this sends it to the app.
 
@@ -31,9 +31,9 @@
 </head>
 <body>
 <main>
-  <h1>Taking you to Pile Tracker</h1>
+  <h1>Taking you to PileHQ</h1>
   <p id="why">One moment.</p>
-  <a href="./" id="go">Open Pile Tracker</a>
+  <a href="./" id="go">Open PileHQ</a>
   <p><code id="asked"></code></p>
 </main>
 <script>
@@ -47,7 +47,9 @@
       /* asking for the folder itself already failed, so the app is genuinely not there.
          Redirecting would loop. Say so plainly instead. */
       document.getElementById("why").textContent =
-        "The app is not at this address. Check that index.html is in the site, then try again.";
+        "There is no index.html at this address. Check the file list in the repository: if it "
+        + "reads INDEX~1.HTM, Windows shortened the names during upload — rename it to "
+        + "index.html and the site comes back.";
       return;
     }
     document.getElementById("why").textContent =
