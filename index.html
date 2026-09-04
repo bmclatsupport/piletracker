@@ -7,8 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#00263A">
-<meta name="apple-mobile-web-app-title" content="PileHQ Crew">
-<meta name="application-name" content="PileHQ Crew">
+<meta name="apple-mobile-web-app-title" content="PileHQ Mobile">
+<meta name="application-name" content="PileHQ Mobile">
 <!-- Optional: only used when the file is hosted at a web address, so it can be
      added to an iPad home screen as a proper full-screen app. Harmless otherwise. -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -709,7 +709,7 @@ body.crew .spacer{display:none}
        Left as null in the master copy. Written by Sync -> Build a standalone tracker.
        A crew page carries only {"fmt":"bm-pile-pack","lockRole":"guest","crewMode":true} and
        waits for a pack, so one hosted page serves every job. -->
-  <script id="bakedProject" type="application/json">{"fmt":"bm-pile-pack","v":1,"app":"6.7","lockRole":"guest","crewMode":true,"piles":[]}</script>
+  <script id="bakedProject" type="application/json">{"fmt":"bm-pile-pack","v":1,"app":"6.11","lockRole":"guest","crewMode":true,"piles":[]}</script>
   <!-- The app sets body.crew during start-up, but the toolbar is painted before start-up
        finishes, so a crew page would show the coordinator's buttons for a frame and then
        drop them. Read the slot here instead, before anything paints. -->
@@ -832,7 +832,7 @@ body.crew .spacer{display:none}
    Single-file, offline-first field app. No external libraries.
    ============================================================ */
 
-const APP_VER = "6.7";
+const APP_VER = "6.11";
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -2383,6 +2383,34 @@ function roundRect(c, x, y, w, h, r) {
    ============================================================ */
 const BLOCK_LBL_PX = 21;
 
+/* ---------------- two levels of naming, one at a time ----------------
+
+   Silver Creek is 23 blocks in five regions, and at the zoom where the whole site fits, block
+   numbers are the wrong labels: 23 two-digit badges, sixteen of which fit and seven of which
+   are dropped for collisions, over blocks 40 to 75 px across. A number that small on a site
+   that big tells a coordinator nothing — what they want to know at that zoom is which part of
+   the job they are looking at.
+
+   So the naming has two levels and they hand over at one zoom. Below the switch the regions are
+   named and the block numbers stay off; at or above it the block numbers come back and the
+   region names step aside. Never both, because they would be labelling the same ground twice.
+
+   The switch is 15, measured rather than picked: on a 1200x800 desktop the whole site fits at
+   14.09 and on a phone at 13.77, so a site view lands on region names either way. At 14 every
+   block is already over the 30 px badge threshold, so 15 is the first zoom where the numbers
+   have real room — 77 px at the smallest block, against a 21 px badge. */
+const LBL_SWITCH_Z = 15;
+const REGION_LBL_PX = 20;
+/* A region smaller than this on screen gets no name: zoomed right out to the county, "Papa" is
+   24 px of ground and the word is four times wider than the thing it names.
+
+   Lower than it first looks right, and deliberately: a region name floats over its group rather
+   than having to fit inside a box, so it does not need the room a badge does. At 62 px, India —
+   which is one block — went unnamed at the zoom where the whole site fits, and a region the
+   site map names is a region a coordinator expects to see named. 40 px is the smallest block on
+   Silver Creek at that zoom. Overlaps are dropped anyway. */
+const REGION_LBL_MIN = 40;
+
 /* Where the badge sits: the middle of the block's own piles.
 
    labelPoint finds the interior point furthest from any edge, which is the right answer for
@@ -2458,9 +2486,19 @@ const BLOCK_LBL_MIN = 30;
 let blockLabelHits = [];
 function drawBlockLabels() {
   blockLabelHits = [];
+  regionLabelHits = [];
   if (!S.blockRings || !S.blockRings.length) return;
   const setup = !!S.blockMode;
   if (!S.showBlockNames && !setup) return;
+  /* Zoomed out the regions carry the naming — see LBL_SWITCH_Z. Not while picking outlines,
+     where the badge is the only way to tell which one you are naming. Both hit lists are
+     cleared above, so whichever level is not on screen is not tappable either.
+
+     The regions only take over if they actually have a name to put up. Freshwater has no
+     regions at all, and handing its site view to a layer with nothing in it left that map with
+     no labels whatsoever — a straight regression for a project that never asked for any of
+     this. So the numbers are the fallback, not the casualty. */
+  if (!setup && zoomLevel() < LBL_SWITCH_Z && drawRegionLabels()) return;
   const V = viewRect();
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   /* Work out every candidate first, then place them biggest-block-first and drop any
@@ -2534,6 +2572,167 @@ function blockLabelAt(px, py) {
     if (px >= r[0] - 4 && px <= r[2] + 4 && py >= r[1] - 4 && py <= r[3] + 4) return h.ring;
   }
   return null;
+}
+
+/* ---------------- the region names ----------------
+
+   Only the blocks whose outline has been named can be grouped, because an unnamed outline is a
+   piece of ground the payload holds no piles for and there is nothing to say which block it is.
+   Silver Creek carries 54 outlines and 23 names, so 31 of them are correctly left alone.
+
+   A region's name goes at the area-weighted centre of its blocks — deliberately not snapped
+   inside one of them. A name that lands neatly within a single block reads as though it were
+   naming that block; sitting across the group, over a road if that is where the middle is, it
+   reads as naming the area. Which is what it is doing. */
+let regionLabelHits = [];
+/* Cached, because this runs on every frame at site zoom and a region's shape only changes when
+   the outlines or the assignments do. The key is the assignment itself rather than a flag
+   somebody has to remember to clear — there are five places that can reassign a block. */
+let regionGroupCache = { key: null, map: null };
+function regionGroups() {
+  const key = (S.blockRings || []).length + "|" + [...(S.regionOf || [])].join(",");
+  if (regionGroupCache.key === key) return regionGroupCache.map;
+  const map = buildRegionGroups();
+  regionGroupCache = { key: key, map: map };
+  return map;
+}
+function buildRegionGroups() {
+  const out = new Map();
+  if (!S.blockRings || !S.regionOf || !S.regionOf.size) return out;
+  /* the largest piece of each block, the same choice drawBlockLabels makes */
+  const best = new Map();
+  for (const b of S.blockRings) {
+    if (!b.name) continue;
+    const held = best.get(b.name);
+    if (!held || (b.area || 0) > (held.area || 0)) best.set(b.name, b);
+  }
+  for (const [name, b] of best) {
+    const r = S.regionOf.get(String(name));
+    if (!r) continue;                              // a block in no region gets no region name
+    if (!out.has(r)) out.set(r, { name: r, blocks: [], box: null });
+    const g = out.get(r);
+    g.blocks.push(b);
+    g.box = g.box ? [Math.min(g.box[0], b.box[0]), Math.min(g.box[1], b.box[1]),
+      Math.max(g.box[2], b.box[2]), Math.max(g.box[3], b.box[3])] : b.box.slice();
+  }
+  for (const g of out.values()) {
+    let wsum = 0, lon = 0, lat = 0;
+    for (const b of g.blocks) {
+      const at = blockLabelPoint(b);
+      const w = Math.max(b.area || 0, 1e-9);
+      wsum += w; lon += at[0] * w; lat += at[1] * w;
+    }
+    g.at = wsum ? [lon / wsum, lat / wsum] : [(g.box[0] + g.box[2]) / 2, (g.box[1] + g.box[3]) / 2];
+  }
+  return out;
+}
+
+/* Returns how many names it managed to place, because the caller needs to know whether this
+   layer had anything to say before it hands the zoom over to it. */
+function drawRegionLabels() {
+  regionLabelHits = [];
+  const groups = regionGroups();
+  if (!groups.size) return 0;
+  const V = viewRect();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const cands = [];
+  for (const g of groups.values()) {
+    const r = { wx0: lon2wx(g.box[0]), wy0: lat2wy(g.box[3]), wx1: lon2wx(g.box[2]), wy1: lat2wy(g.box[1]) };
+    if (!intersect(V, r)) continue;
+    const w = (r.wx1 - r.wx0) * S.view.sc, hgt = (r.wy1 - r.wy0) * S.view.sc;
+    if (w < REGION_LBL_MIN && hgt < REGION_LBL_MIN) continue;
+    const x = sx(lon2wx(g.at[0])), y = sy(lat2wy(g.at[1]));
+    if (x < -120 || y < -30 || x > CW + 120 || y > CH + 30) continue;
+    cands.push({ g, x, y, span: w * hgt, sel: S.filt.region === g.name });
+  }
+  /* the biggest area keeps its name where two will not both fit, and the one being filtered on
+     always keeps its own */
+  cands.sort((p, q) => (q.sel ? 1 : 0) - (p.sel ? 1 : 0) || q.span - p.span);
+  const placed = [];
+  for (const c of cands) {
+    const txt = String(c.g.name).toUpperCase();
+    const fs = REGION_LBL_PX;
+    ctx.font = "700 " + fs + "px Arial";
+    /* letter-spacing is not a canvas property, so the tracking that makes this read as a
+       heading rather than a badge is drawn a character at a time and measured to match */
+    const track = fs * 0.09;
+    const tw = ctx.measureText(txt).width + track * Math.max(0, txt.length - 1);
+    const padX = fs * 0.62, padY = fs * 0.34;
+    const bw = tw + padX * 2, bh = fs + padY * 2;
+    const rect = [c.x - bw / 2 - 3, c.y - bh / 2 - 3, c.x + bw / 2 + 3, c.y + bh / 2 + 3];
+    if (placed.some(q => rect[0] < q[2] && rect[2] > q[0] && rect[1] < q[3] && rect[3] > q[1])) continue;
+    placed.push(rect);
+    regionLabelHits.push({ region: c.g.name, rect: rect });
+
+    /* Three passes, because this sits over whatever the map happens to be showing there and at
+       site zoom that is 26,718 piles drawn as a solid black mass.
+
+       1. a white keyline drawn wider than the pill, which is what separates it from the piles.
+          A drop shadow cannot: the thing behind it is already black, so a dark blur under a
+          dark pill is invisible and the two read as one shape.
+       2. the pill, fully opaque. At .92 the pile mass showed through as a mottle and the
+          lettering sat on texture rather than on a field.
+       3. the letters, tracked one at a time.
+
+       The shadow goes under the keyline rather than under the pill, so it lifts the whole
+       lockup off pale ground without muddying the edge that does the work on dark. */
+    const x0 = c.x - bw / 2, y0 = c.y - bh / 2, rad = bh * 0.3;
+    const key = Math.max(2.4, fs * 0.14);
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.45)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 1;
+    ctx.lineJoin = "round";
+    ctx.lineWidth = key;
+    ctx.strokeStyle = "#FFFFFF";
+    roundRect(ctx, x0, y0, bw, bh, rad);
+    ctx.stroke();
+    ctx.restore();
+
+    roundRect(ctx, x0, y0, bw, bh, rad);
+    ctx.fillStyle = c.sel ? "#E35205" : "#00263A";
+    ctx.fill();
+    /* a hairline of Malow Orange inside the pill on the one being filtered on, so "this is the
+       region you are looking at" does not rely on colour alone against the others */
+    if (c.sel) {
+      ctx.lineWidth = Math.max(1, fs * 0.06);
+      ctx.strokeStyle = "rgba(255,255,255,.85)";
+      roundRect(ctx, x0 + 2, y0 + 2, bw - 4, bh - 4, Math.max(1, rad - 2));
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.textAlign = "left";
+    let cx = c.x - tw / 2;
+    for (const ch of txt) {
+      ctx.fillText(ch, cx, c.y + fs * 0.06);
+      cx += ctx.measureText(ch).width + track;
+    }
+    ctx.textAlign = "center";
+  }
+  return regionLabelHits.length;
+}
+
+/* the region name under a screen point, if a tap landed on one */
+function regionLabelAt(px, py) {
+  for (const h of regionLabelHits) {
+    const r = h.rect;
+    if (px >= r[0] - 4 && px <= r[2] + 4 && py >= r[1] - 4 && py <= r[3] + 4) return h.region;
+  }
+  return null;
+}
+
+/* Tapping a region name goes there, which is the whole point of the two levels: the name tells
+   you which part of the job you are looking at, and the tap takes you to the zoom where its
+   block numbers are readable. */
+function zoomToRegion(name) {
+  const g = regionGroups().get(name);
+  if (!g) return;
+  fitBounds({
+    wx0: lon2wx(g.box[0]), wy0: lat2wy(g.box[3]),
+    wx1: lon2wx(g.box[2]), wy1: lat2wy(g.box[1])
+  }, 40);
+  const st = regionStats().get(name);
+  toast(name + (st ? " · " + st.blocks + " block" + (st.blocks === 1 ? "" : "s")
+    + " · " + st.piles.toLocaleString() + " piles" : ""));
 }
 
 /* ============================================================
@@ -2802,10 +3001,11 @@ function draw() {
   drawOverlays();
   drawDesign();
   drawHiRing();
-  drawBlockLabels();
   if (S.base === "none" && !S.overlays.some(o => o.on)) drawGrid();
 
-  if (!S.piles.length) { drawGps(); drawScale(); return; }
+  /* The names go on last, over the piles — see the note above drawBlockLabels. With no piles
+     to cover them the order does not matter, but they still have to be drawn. */
+  if (!S.piles.length) { drawBlockLabels(); drawGps(); drawScale(); return; }
 
   const r = ptRadius();
   const spx = pxSpacing();
@@ -3134,6 +3334,14 @@ function draw() {
       ctx.stroke();
     }
   }
+
+  /* Last, so nothing is drawn over a name. A region name at site zoom lands on 26,718 piles
+     drawn as a solid black mass — under them it was invisible, which is what a coordinator
+     reported. Block badges were under the piles too: at working zoom a badge usually sits in a
+     gap so it mostly read, but "mostly" was luck, and the tap already treated the badge as
+     though it were on top (blockLabelAt runs before hitTest). This makes the drawing agree
+     with the tapping. */
+  drawBlockLabels();
 
   drawGps();
   drawScale();
@@ -5403,6 +5611,11 @@ function endPtr(e) {
        take a tap aimed squarely at it. */
     const badge = blockLabelAt(tx, ty);
     if (badge) { S.cur = null; openBlockSummary(badge); return; }
+    /* At site zoom the names on the map are regions, and a tap on one goes there — which is
+       how the two levels connect: the name says which part of the job this is, the tap takes
+       you to the zoom where its block numbers are readable. */
+    const reg = regionLabelAt(tx, ty);
+    if (reg) { S.cur = null; closePanel(); zoomToRegion(reg); return; }
     const hit = hitTest(tx, ty);
     if (hit) { S.hiRing = null; openPile(hit.k); }
     else { S.cur = null; S.hiRing = null; hideMapPad(); closePanel(); requestDraw(); }
@@ -7325,8 +7538,12 @@ function openLayers() {
           <button class="lyx" id="lyRmEmpty">Remove</button></div>` : "";
     })()}
     ${(S.blockRings && S.blockRings.length) ? `<div class="section-title">Block names</div>
-      ${layerRow("bn", "1", "Block numbers on the map", null, S.showBlockNames, "",
-        S.blockRings.filter(b => b.name).length + " of " + S.blockRings.length + " outlines named")}
+      ${layerRow("bn", "1", "Names on the map", null, S.showBlockNames, "",
+        S.regionOf.size
+          ? "Regions zoomed out, block numbers zoomed in \u2014 " + regionGroups().size
+            + " region" + (regionGroups().size === 1 ? "" : "s") + ", "
+            + S.blockRings.filter(b => b.name).length + " of " + S.blockRings.length + " outlines named"
+          : S.blockRings.filter(b => b.name).length + " of " + S.blockRings.length + " outlines named")}
       <div class="lgrow" id="lySetup"><div class="nm"><b>Label the blocks</b><br>
         <span style="font-size:11px;color:var(--bm-steel)">Tap each outline on the map and give it its number</span></div>
       <div class="ct">▸</div></div>` : ""}
@@ -7566,7 +7783,9 @@ function openLegend() {
     ${dl ? `<div class="section-title">Design layers</div>${dl}` : ""}
     ${(S.blockRings && S.blockRings.length) ? `<div class="section-title">From the CAD drawing</div>
       <div class="lgrow" id="bnToggle"><div class="chk ${S.showBlockNames ? "on" : ""}">${S.showBlockNames ? "✓" : ""}</div>
-        <div class="nm">Block names on the map</div><div class="ct">${S.blockRings.filter(b => b.name).length} of ${S.blockRings.length} named</div></div>
+        <div class="nm">Names on the map<br><span style="font-size:11px;color:var(--bm-steel)">${S.regionOf.size
+          ? "Regions zoomed out, block numbers zoomed in" : "Block numbers"}</span></div>
+        <div class="ct">${S.blockRings.filter(b => b.name).length} of ${S.blockRings.length} named</div></div>
       <div class="lgrow" id="bnSetup"><div class="nm"><b>Label the blocks</b><br>
         <span style="font-size:11px;color:var(--bm-steel)">Walk through each outline and give it its number</span></div>
         <div class="ct">▸</div></div>` : ""}
@@ -8329,7 +8548,7 @@ function exportGuestPack() {
   if (!S.proj) return toast("Load a project first");
   const j = packFile();
   const recs = Object.keys(j.ov).filter(k => j.ov[k] && j.ov[k].ts).length;
-  const nm = `${dayStamp(new Date())}_${slug(S.proj.name)}_CREW-PACK.pilepack.json`;
+  const nm = exportName("Crew Pack", ".pilepack.json");
   saveOrShare(nm, new Blob([JSON.stringify(j)], { type: "application/json" }));
   toast(S.piles.length.toLocaleString() + " piles · " + recs.toLocaleString()
     + " records · opens as Guest on any tablet", 4200);
@@ -8709,7 +8928,7 @@ function openCombine() {
   save.disabled = !ok;
   save.onclick = () => {
     const csv = buildMasterCsv(cmbFiles, { uniqueIds: cmbUnique, keepFar: cmbKeepFar });
-    const nm = `${dayStamp(new Date())}_MASTER-pile-points.csv`;
+    const nm = exportName("Master Pile Points", ".csv");
     saveOrShare(nm, new Blob([csv], { type: "text/csv" }));
     const i2 = combineIssues(cmbFiles);
     toast(i2.total.toLocaleString() + " piles from " + cmbFiles.length + " files"
@@ -8780,9 +8999,23 @@ const canBulkRemed = () => !crewMode();
 const HQ_MARK = '<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="19" stroke-linecap="round" stroke-linejoin="round"> <path d="M312 104 h84 v104 h-84 z"/> <path d="M330 208 h48 v190 h-48 z"/> <line x1="354" y1="410" x2="354" y2="476" stroke-width="27"/> <path d="M96 214 h150"/> <path d="M116 214 v128"/> <path d="M226 214 v128"/> <path d="M150 342 v-46 h44"/> <path d="M86 342 h214 v54 h-214 z"/> <path d="M300 318 h30"/> <path d="M70 402 h206 a26 26 0 0 1 0 52 h-206 a26 26 0 0 1 0 -52 z"/> <circle cx="112" cy="428" r="14"/> <circle cx="173" cy="428" r="14"/> <circle cx="234" cy="428" r="14"/> <line x1="40" y1="474" x2="472" y2="474" stroke-width="17"/> </g></svg>';
 const hqLockup = (cls) => `<span class="hq${cls ? " " + cls : ""}">${HQ_MARK}<b>Pile<i>HQ</i></b></span>`;
 
+/* What the hosted, non-baked page calls itself.
+
+   It used to be "Crew", which named the audience rather than the thing — and a coordinator
+   opening the same address got a page announcing itself as Crew. "Mobile" names what it is: the
+   app at a web address, no project sealed inside, added to a home screen and fed a pack. The
+   baked files still name their site and their role, because there the project *is* the
+   identity.
+
+   One constant, because this string has to appear in four places that a phone reads
+   separately: the tab, the header, the iOS home-screen meta tag and the web manifest. Android
+   takes the label from the manifest and iOS from the meta tag, so if those two ever disagree
+   the same app has two different names on two platforms — hosting.cjs fails if they do. */
+const MOBILE_NAME = "PileHQ Mobile";
+
 function buildName() {
   const j = readBaked();
-  if (j && j.crewMode) return "PileHQ · Crew";
+  if (j && j.crewMode) return MOBILE_NAME;
   if (j && j.piles && j.piles.length) {
     const who = j.lockRole === "guest" ? "Crew" : "Coordinator";
     return "PileHQ · " + (j.site || (j.proj && j.proj.name) || "project") + " · " + who;
@@ -8918,7 +9151,7 @@ async function exportCrewPage() {
       app copying its own file, and a page opened straight off a disk is not allowed to read itself.
       Open the tracker at its web address and do this from there.</p>`,
       [{ t: "Close", cls: "btn pri", fn: closeModal }]);
-  showBusy("Building the crew page", "Copying the app and sealing crew mode into it…");
+  showBusy("Building " + MOBILE_NAME, "Copying the app and sealing crew mode into it…");
   try {
     const src = await (await fetch(location.href, { cache: "reload" })).text();
     const j = { fmt: "bm-pile-pack", v: 1, app: APP_VER, at: nowTs(), lockRole: "guest", crewMode: true, piles: [] };
@@ -8935,12 +9168,12 @@ async function exportCrewPage() {
     const cut = baked.indexOf("</head>");
     if (cut < 0) { closeModal(); return toast("Could not read the page head"); }
     const head = baked.slice(0, cut)
-      .replace(/(name="apple-mobile-web-app-title" content=")[^"]*/, "$1PileHQ Crew")
-      .replace(/(name="application-name" content=")[^"]*/, "$1PileHQ Crew");
+      .replace(/(name="apple-mobile-web-app-title" content=")[^"]*/, "$1" + MOBILE_NAME)
+      .replace(/(name="application-name" content=")[^"]*/, "$1" + MOBILE_NAME);
     const out = head + baked.slice(cut);
     saveOrShare("index.html", new Blob([out], { type: "text/html" }));
     closeModal();
-    modal("Crew page built", `
+    modal(MOBILE_NAME + " built", `
       <div class="readrow" style="border-top:0"><span>Opens as</span><b>Guest, sealed</b></div>
       <div class="readrow"><span>Project inside it</span><b>none, arrives as a pack</b></div>
       <div class="readrow"><span>File size</span><b>${Math.round(out.length / 1024).toLocaleString()} KB</b></div>
@@ -9981,6 +10214,39 @@ async function saveOrShare(fname, blob) {
 }
 const slug = s => String(s || "project").replace(/[^\w.-]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 
+/* ---------------- what a file the app hands out is called ----------------
+
+   One rule for every export, so it can be said down a phone: **the date, the site, the crew if
+   the file belongs to one, then plain words for what it is.** "Look for today's date and the
+   words Crew Pack." Names used to read `2026-09-04_silver-creek_CREW-PACK.pilepack.json` —
+   underscores, a slug and shouting. Easy for a script, hard to read out loud in a trailer, and
+   every export had invented its own spelling of the same idea.
+
+   The site name stays in the middle on purpose. Two sites run out of this app, and two packs
+   exported on one day would otherwise be the same filename, leaving a crew choosing between
+   "Crew Pack.pilepack.json" and "Crew Pack (1).pilepack.json". The date stays first, so a
+   folder still sorts by day, which is how a coordinator finds last Tuesday's.
+
+   The extension is deliberately not part of this. `.pilepack.json` and `.pilesync.json` are
+   what the importer matches on and what the crew help tells people to look for — renaming
+   those would break the one thing about a filename that the app itself reads. */
+const FNAME_BAD = /[\\/:*?"<>|]/g;
+function fnamePart(v) {
+  /* Windows and iOS both refuse some of these, and a name ending in a space or a dot is
+     silently mangled rather than refused — so each part is cleaned on its own. */
+  return String(v == null ? "" : v).replace(FNAME_BAD, " ")
+    .replace(/[\s.]+$/, "").replace(/\s+/g, " ").trim().slice(0, 40);
+}
+function exportName(what, ext, who) {
+  const parts = [dayStamp(new Date())];
+  const site = fnamePart(S.proj && S.proj.name);
+  if (site) parts.push(site);
+  const crew = fnamePart(who);
+  if (crew) parts.push(crew);
+  parts.push(what);
+  return parts.filter(Boolean).join(" ") + ext;
+}
+
 function crewFile() {
   const recs = {};
   for (const k in S.ov) { const o = S.ov[k]; if (o && o.ts) recs[k] = o; }
@@ -9995,7 +10261,7 @@ function exportDay() {
   const j = crewFile();
   const n = Object.keys(j.records).length;
   if (!n) return toast("No field records on this device yet");
-  const nm = `${dayStamp(new Date())}_${slug(S.dev.crew || S.dev.name || "crew")}_${slug(S.proj.name)}.pilesync.json`;
+  const nm = exportName("My Day", ".pilesync.json", S.dev.crew || S.dev.name || "Crew");
   saveOrShare(nm, new Blob([JSON.stringify(j)], { type: "application/json" }));
   toast(n.toLocaleString() + " records exported");
 }
@@ -10005,7 +10271,7 @@ function exportMorning() {
   const j = crewFile();
   j.kind = "morning";
   j.dev = { id: "master", name: "Master tracker", crew: S.dev.crew || "" };
-  const nm = `${dayStamp(new Date())}_${slug(S.proj.name)}_MORNING-UPDATE.pilesync.json`;
+  const nm = exportName("Morning Update", ".pilesync.json");
   saveOrShare(nm, new Blob([JSON.stringify(j)], { type: "application/json" }));
   toast(Object.keys(j.records).length.toLocaleString() + " records. Send this to every tablet");
 }
@@ -10022,7 +10288,7 @@ function exportBackup() {
     blockRings: S.blockRings || [],
     regions: serialRegions()
   };
-  saveOrShare(`${dayStamp(new Date())}_${slug(S.proj.name)}_FULL-BACKUP.json`,
+  saveOrShare(exportName("Full Backup", ".json"),
     new Blob([JSON.stringify(j)], { type: "application/json" }));
   toast("Full backup saved");
 }
@@ -10427,7 +10693,8 @@ function exportCSV(remOnly) {
       o.nt || "", o.cr || "", o.byName || o.by || "",
       o.ts ? new Date(o.ts).toISOString() : "", p.k].map(csvCell).join(","));
   }
-  const nm = `${dayStamp(new Date())}_${slug(S.dev.crew || S.dev.name || "crew")}_${slug(S.proj.name)}_${remOnly ? "REMEDIATION" : "PILE-STATUS"}.csv`;
+  const nm = exportName(remOnly ? "Remediation" : "Pile Status", ".csv",
+    S.dev.crew || S.dev.name || "Crew");
   saveOrShare(nm, new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv" }));
   toast(n.toLocaleString() + " rows exported");
 }
@@ -10582,7 +10849,7 @@ function exportRemediationLog() {
   const { sheets, invCount, blockCount, noType } = buildRemediationLog();
   if (!sheets.length) return toast("No piles to export");
   const blob = buildXlsx(sheets);
-  const nm = `${dayStamp(new Date())}_${slug(S.proj.name)}_Pile Remediation Log by Block.xlsx`;
+  const nm = exportName("Remediation Log by Block", ".xlsx");
   saveOrShare(nm, blob);
   toast(blockCount + " block sheet" + (blockCount === 1 ? "" : "s")
     + (invCount ? " + inverter" : "") + " · " + t.remTot.toLocaleString() + " remediation entries"
@@ -10909,7 +11176,7 @@ async function openSync() {
       <p class="hint" style="margin:0 0 10px">One HTML file with this project and one role sealed inside it,
         nothing to import, no address, no passcode. For a trial: email the Crew file to the install crews and the
         Coordinator file to the project team. Whoever holds a file gets that role.</p>
-      <button class="btn" id="sCrewPage" style="width:100%;height:44px;font-size:12px;margin-bottom:10px">Build the hosted crew page</button>
+      <button class="btn" id="sCrewPage" style="width:100%;height:44px;font-size:12px;margin-bottom:10px">Build the hosted ${esc(MOBILE_NAME)} page</button>
       <p class="hint" style="margin:0 0 10px">The other way round: no project inside, sealed to the field tools only,
         meant to be published at a web address so the crews can add it to a home screen. One page serves every job.
         Emailed files cannot be added to a home screen, which is the only reason to host anything.</p>` : ""}
@@ -10987,7 +11254,7 @@ async function openSync() {
   $("#sPack").onclick = () => gate("packs", "Making a crew pack", exportGuestPack);
   if ($("#sStandC")) $("#sStandC").onclick = () => gate("project", "Building a standalone file", () => exportStandalone("coordinator"));
   if ($("#sStandG")) $("#sStandG").onclick = () => gate("project", "Building a standalone file", () => exportStandalone("guest"));
-  if ($("#sCrewPage")) $("#sCrewPage").onclick = () => gate("project", "Building the crew page", exportCrewPage);
+  if ($("#sCrewPage")) $("#sCrewPage").onclick = () => gate("project", "Building the " + MOBILE_NAME + " page", exportCrewPage);
   $("#sMorn").onclick = () => gate("packs", "Making a morning update", exportMorning);
   $("#sImp").onclick = () => gate("merge", "Merging crew files", () => pickFiles(fl => importSync([...fl])));
   $("#sXls").onclick = exportRemediationLog;
@@ -11706,8 +11973,8 @@ function wrongFileHelp(name, what) {
     ${what ? `<div class="readrow"><span>Which looks like</span><b>${esc(what)}</b></div>` : ""}
     <p class="hint" style="margin:10px 0 0">Design files build a project from scratch, which is a
       job for the office. What you want is the pack your coordinator sends out, which has a name
-      ending <b>.pilepack.json</b> and usually starts with the date, like
-      <b>2026-08-25_silver-creek_CREW-PACK.pilepack.json</b>.<br><br>
+      ending <b>.pilepack.json</b> and starting with the date, like
+      <b>2026-09-04 Silver Creek Crew Pack.pilepack.json</b>.<br><br>
       If you have not been sent one, ask your coordinator for the crew pack. Nothing on this
       device has been changed.</p>`,
     [{ t: "Try another file", cls: "btn pri", fn: () => { closeModal(); pickPack(); } },
