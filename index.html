@@ -7,8 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#00263A">
-<meta name="apple-mobile-web-app-title" content="PileHQ Crew">
-<meta name="application-name" content="PileHQ Crew">
+<meta name="apple-mobile-web-app-title" content="PileHQ Mobile">
+<meta name="application-name" content="PileHQ Mobile">
 <!-- Optional: only used when the file is hosted at a web address, so it can be
      added to an iPad home screen as a proper full-screen app. Harmless otherwise. -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -362,6 +362,16 @@ body.home-on .toolbar,body.home-on .main{display:none}
    the way they sit on the map, so the arrow that points up the screen walks up the screen.
    Directions with no pile beside them stay as empty outlines rather than vanishing — the pad
    keeps its shape from pile to pile, so the thumb learns one position and keeps it. */
+/* The shake-out line in the step header: full width, tappable, and it says its own state.
+
+   Deliberately tight. The stepped sheet is capped at a third of the screen and at 27px tall
+   this line took the first step to 35% of a 667px phone — over the cap, which exists so that
+   recording a pile never covers the site. It is a full-width row, so the target stays big for
+   a gloved thumb even at this height, and it is left off the last step — there the work is
+   done, the header already reads back "Shaken out", and 21px more would have taken the
+   confirmation to 36%. tests/mappad.cjs fails if either grows back. */
+.shkline{display:block;width:100%;margin:4px 0 0;padding:2px 0;text-align:center;
+  border:1px dashed var(--bm-rebar);border-radius:var(--radius);font-size:11.5px;line-height:1.35}
 .npad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;max-width:264px}
 .npad.sm{gap:5px;max-width:100%}
 .npc{height:52px;border-radius:var(--radius);display:flex;flex-direction:column;
@@ -699,9 +709,6 @@ body.crew .spacer{display:none}
     </div>
     <div class="kpis">
       <div class="kpi"><b id="kTotal">0</b><span>Piles</span></div>
-      <!-- Shake-out sits before Installed because that is the order the work happens in, and a
-           crew reading left to right should see the site the way they walk it. -->
-      <div class="kpi"><b id="kShake">0</b><span>Shaken out</span></div>
       <div class="kpi"><b id="kDone">0</b><span>Installed</span></div>
       <div class="kpi accent"><b id="kPct">0%</b><span>Complete</span></div>
       <div class="kpi"><b id="kRem">0</b><span>Remediate</span></div>
@@ -712,7 +719,7 @@ body.crew .spacer{display:none}
        Left as null in the master copy. Written by Sync -> Build a standalone tracker.
        A crew page carries only {"fmt":"bm-pile-pack","lockRole":"guest","crewMode":true} and
        waits for a pack, so one hosted page serves every job. -->
-  <script id="bakedProject" type="application/json">{"fmt":"bm-pile-pack","v":1,"app":"6.4","lockRole":"guest","crewMode":true,"piles":[]}</script>
+  <script id="bakedProject" type="application/json">{"fmt":"bm-pile-pack","v":1,"app":"6.12","lockRole":"guest","crewMode":true,"piles":[]}</script>
   <!-- The app sets body.crew during start-up, but the toolbar is painted before start-up
        finishes, so a crew page would show the coordinator's buttons for a frame and then
        drop them. Read the slot here instead, before anything paints. -->
@@ -835,7 +842,7 @@ body.crew .spacer{display:none}
    Single-file, offline-first field app. No external libraries.
    ============================================================ */
 
-const APP_VER = "6.4";
+const APP_VER = "6.12";
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -1412,6 +1419,9 @@ function resize() {
   cv.style.width = CW + "px"; cv.style.height = CH + "px";
   /* A fit that was asked for while the map was hidden gets its chance here, which is the first
      moment the canvas has a real size. */
+  /* turning the tablet, or the keyboard coming up, changes how much clear map is left above
+     the sheet — and the pad is placed against that */
+  try { if (mapPadFor) syncMapPad(); } catch (e) { }
   if (pendingFit && CW >= 50 && CH >= 50) {
     const f = pendingFit; pendingFit = null;
     fitBounds(f.b, f.padPx);
@@ -1916,12 +1926,12 @@ function padHTML(pad, compact) {
     const n = pad[d];
     if (!n) return `<div class="npc off"></div>`;
     return `<button class="npc live${d === hi ? " hi" : ""}" data-nd="${d}"
-      title="${esc(n.pile.id)} · ${ftOf(n.m)} ${COMPASS[d]}"><i>${DIR_ARROW[d]}</i><em>${ftOf(n.m)}</em></button>`;
+      title="${esc(pileLabel(n.pile))} · ${ftOf(n.m)} ${COMPASS[d]}"><i>${DIR_ARROW[d]}</i><em>${ftOf(n.m)}</em></button>`;
   }).join("");
   const t = hi != null ? pad[hi] : null;
   return `<div class="npad${compact ? " sm" : ""}">${cells}</div>
     <div class="npnote">${t
-      ? `Next: <b>${esc(t.pile.id)}</b> · ${ftOf(t.m)} ${COMPASS[hi]}`
+      ? `Next: <b>${esc(pileLabel(t.pile))}</b> · ${ftOf(t.m)} ${COMPASS[hi]}`
       : `${live} pile${live === 1 ? "" : "s"} beside this one`}</div>`;
 }
 
@@ -1931,16 +1941,55 @@ function padHTML(pad, compact) {
    in front of them with the map behind it rather than under a full-height sheet.            */
 let mapPadFor = null;                 // the pile key the pad is currently about
 
+/* Where the pad can go, on a phone.
+
+   The pad and the crew sheet were both anchored to the bottom of the screen — the pad at
+   `bottom:8px` on z-index 8, the sheet at `bottom:0` on z-index 20. So through the whole
+   stepped flow the pad was built, wired and switched on *underneath* the sheet, and the only
+   way a crew could see the directions was to tap "Show all", which swaps the sheet for the full
+   panel and draws the pad inside it. It looked like a feature that only worked in one place.
+
+   The sheet sizes itself to its content and can be dragged to any height, so its top edge has
+   to be measured rather than assumed. If there is not enough clear map left above it for the
+   pad to be usable, the pad hides instead of overlapping the buttons underneath it. */
+const MAPPAD_H = 208;                 // the pad's own height: header, 3x3 grid and the note
+function placeMapPad() {
+  const pad = $("#mapPad");
+  if (!pad) return false;
+  if (!isPhone()) { pad.style.bottom = ""; return true; }
+  const pn = $("#panel");
+  const sheet = (pn && pn.classList.contains("open")) ? (pn.offsetHeight || 0) : 0;
+  /* With the sheet down there is still furniture along the bottom edge — the scale bar, the
+     imagery credit, the GPS strip — so the pad clears that instead. */
+  const floor = sheet || 44;
+  pad.style.bottom = (floor + 8) + "px";
+  /* CH is the map's own height. Before the first layout — and in anything that does not lay a
+     page out at all — it reads as nothing, and "there is no room" must never be inferred from
+     "there is no measurement" or the pad would quietly never appear. Same lesson as the iPad
+     start-up hang: an unknown is not a no. */
+  if (CH < MAPPAD_H) return true;
+  return (CH - floor) >= MAPPAD_H + 16;
+}
+
 function showMapPad(k) {
   const p = k ? pileOf(k) : null;
   const pad = $("#mapPad");
   if (!p || S.walk.on || reviewing()) return hideMapPad();
+  const o = S.ov[k] || {};
+  /* "Which way next" is only a question once this pile is answered. Before that the pad was
+     competing with "Is it in?" for a crew's attention while sitting behind the sheet anyway —
+     and the comment at the top of this section has claimed since it was written that the pad
+     appears once a pile has been recorded. It did not. Now it does: the moment installation is
+     recorded, the directions are on the map, so the crew can walk on without reaching the end
+     of the flow or hunting for "Show all". */
+  const recorded = !!(o.tsI || o.tsR || o.tsS || String(o.nt || "").trim());
+  if (!recorded) return hideMapPad();
   const dirs = neighborPad(p, true);
   if (!dirs.some(Boolean)) return hideMapPad();
+  if (!placeMapPad()) return hideMapPad();
   mapPadFor = k;
-  const o = S.ov[k] || {};
   const st = statusOf(k);
-  $("#mapPadId").textContent = p.id;
+  $("#mapPadId").textContent = pileLabel(p);
   $("#mapPadSt").textContent = o.tsI ? (o.st ? "in" : "not in") : "";
   $("#mapPadSt").style.color = st === "rem" ? "var(--bm-red)"
     : (st === "in" || st === "fixed") ? "var(--bm-green)" : "var(--bm-steel)";
@@ -1966,6 +2015,10 @@ function hideMapPad() {
 function syncMapPad() {
   if (!usePileSteps() || !S.cur || S.walk.on || reviewing()) return hideMapPad();
   showMapPad(S.cur);
+  /* The sheet's height depends on the step it is showing — a third of the screen for a
+     question, more for the note box — and the pad sits on top of its edge. Measured again on
+     the next tick in case the browser had not finished laying the new step out. */
+  setTimeout(() => { if (mapPadFor === S.cur && !placeMapPad()) hideMapPad(); }, 0);
 }
 
 /* Recomputed on the tap rather than trusted from render time, because a filter or another
@@ -2025,6 +2078,22 @@ function addSym(c, sym, x, y, r) {
     }
     case "cab_dead": {           // bounding circle; the X itself is stroked separately
       c.moveTo(x + r, y); c.arc(x, y, r, 0, 6.2832);
+      break;
+    }
+    case "elec_motor": {
+      /* The letter M, as four strokes: up the left leg, down into the valley, up the right
+         leg, down the right leg. Drawn rather than typeset — fillText would be one call per
+         pile, where this joins the batched path every other symbol uses.
+
+         0.72 wide against 1.0 tall keeps the proportions of a real M; a square one reads as a
+         zigzag. The valley stops at 0.15 below centre so the middle stays clear of the
+         remediation dot that gets painted over it. */
+      const w = r * 0.72, h = r * 0.95;
+      c.moveTo(x - w, y + h);
+      c.lineTo(x - w, y - h);
+      c.lineTo(x, y + h * 0.15);
+      c.lineTo(x + w, y - h);
+      c.lineTo(x + w, y + h);
       break;
     }
     default:
@@ -2324,6 +2393,34 @@ function roundRect(c, x, y, w, h, r) {
    ============================================================ */
 const BLOCK_LBL_PX = 21;
 
+/* ---------------- two levels of naming, one at a time ----------------
+
+   Silver Creek is 23 blocks in five regions, and at the zoom where the whole site fits, block
+   numbers are the wrong labels: 23 two-digit badges, sixteen of which fit and seven of which
+   are dropped for collisions, over blocks 40 to 75 px across. A number that small on a site
+   that big tells a coordinator nothing — what they want to know at that zoom is which part of
+   the job they are looking at.
+
+   So the naming has two levels and they hand over at one zoom. Below the switch the regions are
+   named and the block numbers stay off; at or above it the block numbers come back and the
+   region names step aside. Never both, because they would be labelling the same ground twice.
+
+   The switch is 15, measured rather than picked: on a 1200x800 desktop the whole site fits at
+   14.09 and on a phone at 13.77, so a site view lands on region names either way. At 14 every
+   block is already over the 30 px badge threshold, so 15 is the first zoom where the numbers
+   have real room — 77 px at the smallest block, against a 21 px badge. */
+const LBL_SWITCH_Z = 15;
+const REGION_LBL_PX = 20;
+/* A region smaller than this on screen gets no name: zoomed right out to the county, "Papa" is
+   24 px of ground and the word is four times wider than the thing it names.
+
+   Lower than it first looks right, and deliberately: a region name floats over its group rather
+   than having to fit inside a box, so it does not need the room a badge does. At 62 px, India —
+   which is one block — went unnamed at the zoom where the whole site fits, and a region the
+   site map names is a region a coordinator expects to see named. 40 px is the smallest block on
+   Silver Creek at that zoom. Overlaps are dropped anyway. */
+const REGION_LBL_MIN = 40;
+
 /* Where the badge sits: the middle of the block's own piles.
 
    labelPoint finds the interior point furthest from any edge, which is the right answer for
@@ -2399,9 +2496,19 @@ const BLOCK_LBL_MIN = 30;
 let blockLabelHits = [];
 function drawBlockLabels() {
   blockLabelHits = [];
+  regionLabelHits = [];
   if (!S.blockRings || !S.blockRings.length) return;
   const setup = !!S.blockMode;
   if (!S.showBlockNames && !setup) return;
+  /* Zoomed out the regions carry the naming — see LBL_SWITCH_Z. Not while picking outlines,
+     where the badge is the only way to tell which one you are naming. Both hit lists are
+     cleared above, so whichever level is not on screen is not tappable either.
+
+     The regions only take over if they actually have a name to put up. Freshwater has no
+     regions at all, and handing its site view to a layer with nothing in it left that map with
+     no labels whatsoever — a straight regression for a project that never asked for any of
+     this. So the numbers are the fallback, not the casualty. */
+  if (!setup && zoomLevel() < LBL_SWITCH_Z && drawRegionLabels()) return;
   const V = viewRect();
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   /* Work out every candidate first, then place them biggest-block-first and drop any
@@ -2477,6 +2584,167 @@ function blockLabelAt(px, py) {
   return null;
 }
 
+/* ---------------- the region names ----------------
+
+   Only the blocks whose outline has been named can be grouped, because an unnamed outline is a
+   piece of ground the payload holds no piles for and there is nothing to say which block it is.
+   Silver Creek carries 54 outlines and 23 names, so 31 of them are correctly left alone.
+
+   A region's name goes at the area-weighted centre of its blocks — deliberately not snapped
+   inside one of them. A name that lands neatly within a single block reads as though it were
+   naming that block; sitting across the group, over a road if that is where the middle is, it
+   reads as naming the area. Which is what it is doing. */
+let regionLabelHits = [];
+/* Cached, because this runs on every frame at site zoom and a region's shape only changes when
+   the outlines or the assignments do. The key is the assignment itself rather than a flag
+   somebody has to remember to clear — there are five places that can reassign a block. */
+let regionGroupCache = { key: null, map: null };
+function regionGroups() {
+  const key = (S.blockRings || []).length + "|" + [...(S.regionOf || [])].join(",");
+  if (regionGroupCache.key === key) return regionGroupCache.map;
+  const map = buildRegionGroups();
+  regionGroupCache = { key: key, map: map };
+  return map;
+}
+function buildRegionGroups() {
+  const out = new Map();
+  if (!S.blockRings || !S.regionOf || !S.regionOf.size) return out;
+  /* the largest piece of each block, the same choice drawBlockLabels makes */
+  const best = new Map();
+  for (const b of S.blockRings) {
+    if (!b.name) continue;
+    const held = best.get(b.name);
+    if (!held || (b.area || 0) > (held.area || 0)) best.set(b.name, b);
+  }
+  for (const [name, b] of best) {
+    const r = S.regionOf.get(String(name));
+    if (!r) continue;                              // a block in no region gets no region name
+    if (!out.has(r)) out.set(r, { name: r, blocks: [], box: null });
+    const g = out.get(r);
+    g.blocks.push(b);
+    g.box = g.box ? [Math.min(g.box[0], b.box[0]), Math.min(g.box[1], b.box[1]),
+      Math.max(g.box[2], b.box[2]), Math.max(g.box[3], b.box[3])] : b.box.slice();
+  }
+  for (const g of out.values()) {
+    let wsum = 0, lon = 0, lat = 0;
+    for (const b of g.blocks) {
+      const at = blockLabelPoint(b);
+      const w = Math.max(b.area || 0, 1e-9);
+      wsum += w; lon += at[0] * w; lat += at[1] * w;
+    }
+    g.at = wsum ? [lon / wsum, lat / wsum] : [(g.box[0] + g.box[2]) / 2, (g.box[1] + g.box[3]) / 2];
+  }
+  return out;
+}
+
+/* Returns how many names it managed to place, because the caller needs to know whether this
+   layer had anything to say before it hands the zoom over to it. */
+function drawRegionLabels() {
+  regionLabelHits = [];
+  const groups = regionGroups();
+  if (!groups.size) return 0;
+  const V = viewRect();
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const cands = [];
+  for (const g of groups.values()) {
+    const r = { wx0: lon2wx(g.box[0]), wy0: lat2wy(g.box[3]), wx1: lon2wx(g.box[2]), wy1: lat2wy(g.box[1]) };
+    if (!intersect(V, r)) continue;
+    const w = (r.wx1 - r.wx0) * S.view.sc, hgt = (r.wy1 - r.wy0) * S.view.sc;
+    if (w < REGION_LBL_MIN && hgt < REGION_LBL_MIN) continue;
+    const x = sx(lon2wx(g.at[0])), y = sy(lat2wy(g.at[1]));
+    if (x < -120 || y < -30 || x > CW + 120 || y > CH + 30) continue;
+    cands.push({ g, x, y, span: w * hgt, sel: S.filt.region === g.name });
+  }
+  /* the biggest area keeps its name where two will not both fit, and the one being filtered on
+     always keeps its own */
+  cands.sort((p, q) => (q.sel ? 1 : 0) - (p.sel ? 1 : 0) || q.span - p.span);
+  const placed = [];
+  for (const c of cands) {
+    const txt = String(c.g.name).toUpperCase();
+    const fs = REGION_LBL_PX;
+    ctx.font = "700 " + fs + "px Arial";
+    /* letter-spacing is not a canvas property, so the tracking that makes this read as a
+       heading rather than a badge is drawn a character at a time and measured to match */
+    const track = fs * 0.09;
+    const tw = ctx.measureText(txt).width + track * Math.max(0, txt.length - 1);
+    const padX = fs * 0.62, padY = fs * 0.34;
+    const bw = tw + padX * 2, bh = fs + padY * 2;
+    const rect = [c.x - bw / 2 - 3, c.y - bh / 2 - 3, c.x + bw / 2 + 3, c.y + bh / 2 + 3];
+    if (placed.some(q => rect[0] < q[2] && rect[2] > q[0] && rect[1] < q[3] && rect[3] > q[1])) continue;
+    placed.push(rect);
+    regionLabelHits.push({ region: c.g.name, rect: rect });
+
+    /* Three passes, because this sits over whatever the map happens to be showing there and at
+       site zoom that is 26,718 piles drawn as a solid black mass.
+
+       1. a white keyline drawn wider than the pill, which is what separates it from the piles.
+          A drop shadow cannot: the thing behind it is already black, so a dark blur under a
+          dark pill is invisible and the two read as one shape.
+       2. the pill, fully opaque. At .92 the pile mass showed through as a mottle and the
+          lettering sat on texture rather than on a field.
+       3. the letters, tracked one at a time.
+
+       The shadow goes under the keyline rather than under the pill, so it lifts the whole
+       lockup off pale ground without muddying the edge that does the work on dark. */
+    const x0 = c.x - bw / 2, y0 = c.y - bh / 2, rad = bh * 0.3;
+    const key = Math.max(2.4, fs * 0.14);
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.45)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 1;
+    ctx.lineJoin = "round";
+    ctx.lineWidth = key;
+    ctx.strokeStyle = "#FFFFFF";
+    roundRect(ctx, x0, y0, bw, bh, rad);
+    ctx.stroke();
+    ctx.restore();
+
+    roundRect(ctx, x0, y0, bw, bh, rad);
+    ctx.fillStyle = c.sel ? "#E35205" : "#00263A";
+    ctx.fill();
+    /* a hairline of Malow Orange inside the pill on the one being filtered on, so "this is the
+       region you are looking at" does not rely on colour alone against the others */
+    if (c.sel) {
+      ctx.lineWidth = Math.max(1, fs * 0.06);
+      ctx.strokeStyle = "rgba(255,255,255,.85)";
+      roundRect(ctx, x0 + 2, y0 + 2, bw - 4, bh - 4, Math.max(1, rad - 2));
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.textAlign = "left";
+    let cx = c.x - tw / 2;
+    for (const ch of txt) {
+      ctx.fillText(ch, cx, c.y + fs * 0.06);
+      cx += ctx.measureText(ch).width + track;
+    }
+    ctx.textAlign = "center";
+  }
+  return regionLabelHits.length;
+}
+
+/* the region name under a screen point, if a tap landed on one */
+function regionLabelAt(px, py) {
+  for (const h of regionLabelHits) {
+    const r = h.rect;
+    if (px >= r[0] - 4 && px <= r[2] + 4 && py >= r[1] - 4 && py <= r[3] + 4) return h.region;
+  }
+  return null;
+}
+
+/* Tapping a region name goes there, which is the whole point of the two levels: the name tells
+   you which part of the job you are looking at, and the tap takes you to the zoom where its
+   block numbers are readable. */
+function zoomToRegion(name) {
+  const g = regionGroups().get(name);
+  if (!g) return;
+  fitBounds({
+    wx0: lon2wx(g.box[0]), wy0: lat2wy(g.box[3]),
+    wx1: lon2wx(g.box[2]), wy1: lat2wy(g.box[1])
+  }, 40);
+  const st = regionStats().get(name);
+  toast(name + (st ? " · " + st.blocks + " block" + (st.blocks === 1 ? "" : "s")
+    + " · " + st.piles.toLocaleString() + " piles" : ""));
+}
+
 /* ============================================================
    What is in one block
 
@@ -2497,10 +2765,6 @@ function blockStats(name) {
        end up larger than the block. */
     done: 0,
     inst: 0, notInst: 0, unrecorded: 0,   // the installation record — these three add to total
-    /* Shake-out, which is the step BEFORE install, so it overlaps all three of the above: a
-       pile can be shaken out and unrecorded, shaken out and driven, or driven with no
-       shake-out ever logged. Counted separately for that reason rather than folded in. */
-    shaken: 0,
     remOpen: 0, remFixed: 0,              // remediation, which can overlap the above
     byRem: new Map(),                     // remediation type -> { open, fixed }
     byType: new Map(),                    // pile type -> count
@@ -2518,7 +2782,6 @@ function blockStats(name) {
     const st = statusOf(p.k);
     if (st === "in" || st === "fixed") s.done++;
     if (o.tsI) { if (o.st) s.inst++; else s.notInst++; } else s.unrecorded++;
-    if (o.sk) s.shaken++;
     if (o.rm) {
       const t = o.rt || "flagged";
       const e = s.byRem.get(t) || { open: 0, fixed: 0 };
@@ -2748,10 +3011,11 @@ function draw() {
   drawOverlays();
   drawDesign();
   drawHiRing();
-  drawBlockLabels();
   if (S.base === "none" && !S.overlays.some(o => o.on)) drawGrid();
 
-  if (!S.piles.length) { drawGps(); drawScale(); return; }
+  /* The names go on last, over the piles — see the note above drawBlockLabels. With no piles
+     to cover them the order does not matter, but they still have to be drawn. */
+  if (!S.piles.length) { drawBlockLabels(); drawGps(); drawScale(); return; }
 
   const r = ptRadius();
   const spx = pxSpacing();
@@ -2803,7 +3067,7 @@ function draw() {
     }
     b.pts.push(x, y);
     if (wantMet && p.sym === "met" && p.sub) mets.push(x, y, p.sub);
-    if (wantLbl) labels.push(p, x, y, st, rt);
+    if (wantLbl && !unnumbered(p)) labels.push(p, x, y, st, rt);   // a motor unit has no number to draw
   }
 
   /* Painted outermost first, colour last, so nothing ever covers the type colour:
@@ -2823,7 +3087,10 @@ function draw() {
     order.forEach(b => {
       const sd = ST[b.st];
       const w = clamp(lw * sd.w, 0.5, 2.8);
-      const open = useShapes && (b.sym === "dcd" || b.sym === "cab_dead");
+      /* A status ring has to read as a ring. For the symbols that are not a solid silhouette —
+         the open diamond, the X, and the M — the ring is drawn as a circle around them
+         instead, because a scaled-up outline of the symbol itself is just a bigger symbol. */
+      const open = useShapes && (b.sym === "dcd" || b.sym === "cab_dead" || b.sym === "elec_motor");
       paths(b.pts, r + w / 2 + (open ? r * 0.22 : 0), open ? "array" : b.sym);
       ctx.lineWidth = w; ctx.strokeStyle = sd.ring; ctx.stroke();
     });
@@ -2849,6 +3116,15 @@ function draw() {
     } else if (kind === "open") {                // DCD
       paths(b.pts, rr, b.sym);
       ctx.strokeStyle = col; ctx.lineWidth = Math.max(rr * 0.32, 1); ctx.stroke();
+    } else if (kind === "glyph") {               // electrical motor: the letter M
+      /* Round joins, or the apex of the M comes to a spike that reads as a different shape.
+         The stroke is a third of the radius: thinner and the letter disappears against
+         imagery, thicker and the valley fills in and it reads as a solid blob. */
+      paths(b.pts, rr, b.sym);
+      ctx.strokeStyle = col; ctx.lineWidth = Math.max(rr * 0.34, 1.1);
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.stroke();
+      ctx.lineJoin = "miter"; ctx.lineCap = "butt";
     } else {
       paths(b.pts, rr, b.sym);
       ctx.fillStyle = col; ctx.fill();
@@ -3068,6 +3344,14 @@ function draw() {
       ctx.stroke();
     }
   }
+
+  /* Last, so nothing is drawn over a name. A region name at site zoom lands on 26,718 piles
+     drawn as a solid black mass — under them it was invisible, which is what a coordinator
+     reported. Block badges were under the piles too: at working zoom a badge usually sits in a
+     gap so it mostly read, but "mostly" was luck, and the tap already treated the badge as
+     though it were on top (blockLabelAt runs before hitTest). This makes the drawing agree
+     with the tapping. */
+  drawBlockLabels();
 
   drawGps();
   drawScale();
@@ -3514,12 +3798,43 @@ const SYMBOLS = {
   cab_mid: { label: "CAB midspan", desc: "Filled diamond", kind: "fill" },
   cab_dead: { label: "CAB dead-end", desc: "X symbol", kind: "x" },
   dcd: { label: "DCD", desc: "Open diamond", kind: "open" },
-  met: { label: "MET", desc: "Pentagon, sub-type annotated", kind: "fill" }
+  met: { label: "MET", desc: "Pentagon, sub-type annotated", kind: "fill" },
+  /* The electrical motor piles are a different thing from the structural motors and were
+     indistinguishable from them: both drew as a filled square. A letter is used rather than
+     another shape because the shapes were running out — a seventh silhouette would have been
+     one more thing to look up in the legend, where an M is self-explanatory. */
+  elec_motor: { label: "Motor Unit", desc: "Letter M", kind: "glyph" }
 };
-const SYM_ORDER = ["array", "motor", "cab_mid", "cab_dead", "dcd", "met"];
+const SYM_ORDER = ["array", "motor", "cab_mid", "cab_dead", "dcd", "met", "elec_motor"];
+
+/* ---------------- piles that have no number ----------------
+
+   A motor unit is a piece of equipment, not a numbered pile. Its sheet arrived as coordinates
+   with no IDs at all, so the number one of them carries is borrowed from the structural motor
+   pile it stands 0.2 m away from. That number is needed — it is what keys the record, and two
+   units in the same region would collide without it — but it must never be shown, because a
+   crew reading "362408" off the screen and back to the engineer would be quoting a different
+   pile's ID. Nor is there a size or an elevation for one: the sheet gave neither.
+
+   So identity here is the position. Northing and easting are the only survey fields a motor
+   unit has, and they are the only ones offered. */
+const UNNUMBERED = { elec_motor: 1 };
+const unnumbered = p => !!(p && UNNUMBERED[p.sym]);
+/* What to call one wherever the rest of the app would print a Point ID. Every place a pile is
+   named to a person goes through these two — panel titles, toasts, the walk strip, the search
+   list, the direction pad, the map labels — so there is one place to look and no site left
+   quoting a number that is not this pile's. */
+const pileLabel = p => !p ? "" : unnumbered(p) ? (SYMBOLS[p.sym] || SYMBOLS.array).label : String(p.id);
+const pileTitle = p => !p ? "" : unnumbered(p) ? pileLabel(p) : "Pile " + p.id;
+
 function symKey(v) {
   const s = String(v == null ? "" : v).trim().toLowerCase();
   if (!s) return "";
+  /* Before the plain "motor" test, or a motor unit reads as a structural motor pile — which is
+     exactly how they ended up indistinguishable on the map. "Motor Unit" is what these are
+     called now, so a sheet using that wording maps here too, while a bare "Motor" still means
+     the structural one. */
+  if (/elec\w*[\s._-]*motor|motor[\s._-]*elec|motor[\s._-]*unit|^emp\b|\bemp[\s._-]*pile/.test(s)) return "elec_motor";
   if (/^met\b|meteo|weather/.test(s)) return "met";
   if (/^dcd\b|combiner|dc\s*disc/.test(s)) return "dcd";
   if (/dead[\s._-]*end|\bde\b/.test(s)) return "cab_dead";
@@ -4846,7 +5161,16 @@ function decodeRow(r, enc) {
     if (how === "const") { ex[name] = arg; continue; }
     const raw = exv[keep.indexOf(name)];
     if (raw == null) continue;                       // this pile simply did not have it
-    if (how === "dict") { const d = enc.exDicts[name]; if (d && d[raw] !== undefined) ex[name] = d[raw]; }
+    /* A dictionary carries `null` for "this pile has no value in this column" — the encoder
+       puts it there because a column only some piles have still needs an entry for the rest.
+       Reading it back as a key set to null is not the same as not having the column: it put
+       `"Point ID": null` on every pile in the file, made p.symRaw the string "null" where the
+       sheet had no type, and would have shown up in an export as a column of the word null.
+       An absent value stays absent. */
+    if (how === "dict") {
+      const d = enc.exDicts[name], v = d ? d[raw] : undefined;
+      if (v !== undefined && v !== null && v !== "") ex[name] = v;
+    }
     else if (raw !== "") ex[name] = raw;
   }
   return [enc.kDerived ? g + "|" + id : r[0], id, g, block, type, r[5], r[6], ex, size, sym, sub];
@@ -4879,8 +5203,13 @@ function restorePiles(rows, proj, dRows, enc, dEnc) {
     const t = types.get(p.type) || { color: "#888" };
     p.color = t.color;
     p.color2 = t.color2 || null;
-    const kEl = findKey(p.ex, ELEV_KEYS); if (kEl) p.elev = p.ex[kEl];
-    const kSym = findKey(p.ex, SYMBOL_KEYS); if (kSym) p.symRaw = String(p.ex[kSym]).trim();
+    /* An empty cell is not a value. Without the guard, a column present in the sheet but blank
+       on this pile gave p.elev = null and p.symRaw = "null" — the string, which then read as a
+       pile type the app could not place. */
+    const kEl = findKey(p.ex, ELEV_KEYS);
+    if (kEl && p.ex[kEl] != null && String(p.ex[kEl]).trim() !== "") p.elev = p.ex[kEl];
+    const kSym = findKey(p.ex, SYMBOL_KEYS);
+    if (kSym && p.ex[kSym] != null && String(p.ex[kSym]).trim() !== "") p.symRaw = String(p.ex[kSym]).trim();
     return p;
   });
   /* Design comes either as the compact form with its own key, or as the plain rows every
@@ -4893,14 +5222,10 @@ function restorePiles(rows, proj, dRows, enc, dEnc) {
 
 /* ---------------- KPI ---------------- */
 function tally() {
-  let done = 0, remOpen = 0, remTot = 0, fixed = 0, touched = 0, shaken = 0;
+  let done = 0, remOpen = 0, remTot = 0, fixed = 0, touched = 0;
   for (const k in S.ov) {
     if (!S.idx.has(k)) continue;
     const o = S.ov[k]; if (o.ts) touched++;
-    /* Shake-out counted here rather than anywhere else, so the header tile, the home screen,
-       the legend and the block summary can never disagree about it — which is exactly the
-       failure the block summary comment warns about for the install figures. */
-    if (o.sk) shaken++;
     if (o.rm) remTot++;
     const s = statusOf(k);
     if (s === "in" || s === "fixed") done++;
@@ -4908,10 +5233,7 @@ function tally() {
     if (s === "fixed") fixed++;
   }
   const tot = S.piles.length;
-  return {
-    tot, done, open: tot - done, remOpen, remTot, fixed, touched, pct: tot ? done / tot : 0,
-    shaken, shakeLeft: tot - shaken, shakePct: tot ? shaken / tot : 0
-  };
+  return { tot, done, open: tot - done, remOpen, remTot, fixed, touched, pct: tot ? done / tot : 0 };
 }
 function refreshKPI() {
   const t = tally();
@@ -4919,8 +5241,6 @@ function refreshKPI() {
   $("#kDone").textContent = t.done.toLocaleString();
   $("#kPct").textContent = Math.round(t.pct * 100) + "%";
   $("#kRem").textContent = t.remOpen.toLocaleString();
-  /* Guarded, because a build that predates this tile is still a build the tests load. */
-  const ks = $("#kShake"); if (ks) ks.textContent = t.shaken.toLocaleString();
   updateFilterBtn();
   requestDraw();
 }
@@ -5126,10 +5446,6 @@ const tsS = o => halfTs(o, "S");
 /* Has this pile been shaken out? One place, because the map, the legend, the panels and the
    bulk sheet all ask it and a truthiness test written four times drifts. */
 const shakenOut = k => { const o = S.ov[k]; return !!(o && o.sk); };
-/* Which view to return to when the shake-out view is switched off. Not persisted on purpose:
-   it is a "put it back where I had it" for one sitting, and a stale value read out of settings
-   a week later would put a coordinator somewhere they did not ask for. */
-let lastColorBy = "type";
 function pileOf(k) { const i = S.idx.get(k); return i == null ? null : S.piles[i]; }
 
 /* ---------------- hit test ---------------- */
@@ -5305,6 +5621,11 @@ function endPtr(e) {
        take a tap aimed squarely at it. */
     const badge = blockLabelAt(tx, ty);
     if (badge) { S.cur = null; openBlockSummary(badge); return; }
+    /* At site zoom the names on the map are regions, and a tap on one goes there — which is
+       how the two levels connect: the name says which part of the job this is, the tap takes
+       you to the zoom where its block numbers are readable. */
+    const reg = regionLabelAt(tx, ty);
+    if (reg) { S.cur = null; closePanel(); zoomToRegion(reg); return; }
     const hit = hitTest(tx, ty);
     if (hit) { S.hiRing = null; openPile(hit.k); }
     else { S.cur = null; S.hiRing = null; hideMapPad(); closePanel(); requestDraw(); }
@@ -5331,8 +5652,8 @@ function endPtr(e) {
       // a tap inside select mode toggles the single pile under your finger
       const hit = hitTest(p.sx - rect.left, p.sy - rect.top);
       if (hit) {
-        if (S.sel.has(hit.k)) { S.sel.delete(hit.k); toast("Pile " + hit.id + " removed · " + S.sel.size.toLocaleString() + " selected"); }
-        else { S.sel.add(hit.k); toast("Pile " + hit.id + " added · " + S.sel.size.toLocaleString() + " selected"); }
+        if (S.sel.has(hit.k)) { S.sel.delete(hit.k); toast(pileTitle(hit) + " removed · " + S.sel.size.toLocaleString() + " selected"); }
+        else { S.sel.add(hit.k); toast(pileTitle(hit) + " added · " + S.sel.size.toLocaleString() + " selected"); }
         if ($("#panelTitle").textContent.indexOf("Area") >= 0) { S.sel.size ? openBulk() : closePanel(); }
       }
     }
@@ -5440,6 +5761,9 @@ $("#mapPadX").onclick = () => { hideMapPad(); S.cur = null; closePanel(); reques
     start.moved = Math.max(start.moved, Math.abs(dy));
     const h = clamp(start.h - dy / window.innerHeight * 100, 22, 95);
     pn.style.height = h + "vh";
+    /* the pad rides the sheet's top edge, so it moves with the finger rather than jumping
+       when the drag ends — and it drops out of sight if the sheet is pulled up over it */
+    if (mapPadFor && !placeMapPad()) hideMapPad();
   });
   const end = e => {
     if (!start) return;
@@ -5452,6 +5776,7 @@ $("#mapPadX").onclick = () => { hideMapPad(); S.cur = null; closePanel(); reques
       closePanel(); S.cur = null; requestDraw();
     }
     start = null;
+    syncMapPad();
   };
   g.addEventListener("pointerup", end);
   g.addEventListener("pointercancel", end);
@@ -5595,13 +5920,13 @@ function walkStrip(p) {
       <button class="wklink" id="wStop">Stop</button></div>
     <div class="walknext ${nx ? "" : "end"}">
       <span class="wkarrow" style="transform:rotate(${w.brg.toFixed(1)}deg)">↑</span>
-      ${nx ? `<span class="wknm"><b>Next · ${esc(nx.id)}</b><small>${ftOf(gapM(p, nx))} ${brgLabel(w.brg)}${nx.block ? " · block " + esc(nx.block) : ""}</small></span>`
-      : nr ? `<span class="wknm"><b>End of the row</b><small>Next tap steps across to ${esc(nr.id)} and turns you round</small></span>`
+      ${nx ? `<span class="wknm"><b>Next · ${esc(pileLabel(nx))}</b><small>${ftOf(gapM(p, nx))} ${brgLabel(w.brg)}${nx.block ? " · block " + esc(nx.block) : ""}</small></span>`
+      : nr ? `<span class="wknm"><b>End of the row</b><small>Next tap steps across to ${esc(pileLabel(nr))} and turns you round</small></span>`
         : `<span class="wknm"><b>End of the run</b><small>${op ? "No row alongside. Nothing more within reach"
           : "Every pile within reach has been recorded"}</small></span>`}
     </div>
     ${op ? `<button class="btn wide" id="wOpen" style="width:100%;margin-bottom:8px">Jump to the nearest
-      one still open · ${esc(op.id)} · ${ftOf(gapM(p, op))} ${brgLabel((Math.atan2(op.gx - p.gx, op.gy - p.gy) * 180 / Math.PI + 360) % 360)}</button>` : ""}
+      one still open · ${esc(pileLabel(op))} · ${ftOf(gapM(p, op))} ${brgLabel((Math.atan2(op.gx - p.gx, op.gy - p.gy) * 180 / Math.PI + 360) % 360)}</button>` : ""}
     <div class="grid2">
       <button class="btn" id="wRev">⇄ Turn around</button>
       <button class="btn" id="wRow">Next row ⤵ ${brgLabel(w.brg + (w.turn < 0 ? -90 : 90))}</button>
@@ -5611,7 +5936,7 @@ function walkStrip(p) {
       if (!bs.length) return "";
       return `<div class="walksub">also within reach, not where the walk goes next</div>
         <div class="wkchips">${bs.map(q => `<button class="wkchip${recorded(q) ? " done" : ""}"
-          data-wk="${esc(q.k)}">${esc(q.id)} <small>${ftOf(gapM(p, q))}</small></button>`).join("")}</div>`;
+          data-wk="${esc(q.k)}">${esc(pileLabel(q))} <small>${ftOf(gapM(p, q))}</small></button>`).join("")}</div>`;
     })()}
     <div class="walksub">the big button records</div>
     <div class="modeseg" id="wQuick">
@@ -5668,7 +5993,7 @@ function walkWire(k, p, saveText) {
     const q = nearestOpen(p);
     if (!q) return toast("Every pile has a record on it");
     centerOn(q.lat, q.lon); openPile(q.k);
-    toast("Pile " + q.id + " · " + ftOf(gapM(p, q)) + " away · still walking " + brgName(w.brg));
+    toast(pileTitle(q) + " · " + ftOf(gapM(p, q)) + " away · still walking " + brgName(w.brg));
   };
   $("#panelBody").querySelectorAll("[data-wk]").forEach(n => n.onclick = () => {
     saveText(); openPile(n.dataset.wk);
@@ -5718,6 +6043,7 @@ function stepHead(p, k, n) {
   const o = S.ov[k] || {};
   const st = statusOf(k);
   const done = [
+    o.tsS ? (o.sk ? "Shaken out" : "Not shaken out") : null,
     o.tsI ? (o.st ? "Installed" : "Not installed") : null,
     o.tsR ? (o.rm ? (o.rt || "flagged") + (o.rf ? " · done" : "") : "No issues") : null,
     (o.nt || "").trim() ? "Note added" : null
@@ -5725,13 +6051,24 @@ function stepHead(p, k, n) {
   return `<div class="stephd">
     <div class="stepid">
       <span class="swatch" style="width:20px;height:20px;background:${swatchBg(p.color, p.color2)};border-color:${ST[st].ring};border-width:3px"></span>
-      <b>${esc(p.id)}</b>
-      <span>${esc(p.type)}${p.block && p.block !== "Unassigned" ? " · block " + esc(p.block) : ""}${S.regionOf.get(p.block) ? " · " + esc(S.regionOf.get(p.block)) : ""}</span>
+      <b>${esc(unnumbered(p) ? (SYMBOLS[p.sym] || SYMBOLS.array).label : p.id)}</b>
+      <span>${esc(unnumbered(p) ? "" : p.type)}${p.block && p.block !== "Unassigned" ? (unnumbered(p) ? "block " : " · block ") + esc(p.block) : ""}${S.regionOf.get(p.block) ? " · " + esc(S.regionOf.get(p.block)) : ""}</span>
       <button class="wklink" id="stAll">Show all</button>
     </div>
     <div class="stepdots">${[1, 2, 3, 4].map(i =>
     `<i class="${i === n ? "on" : i < n ? "past" : ""}"></i>`).join("")}</div>
     ${done.length ? `<div class="stepdone">${done.map(esc).join(" · ")}</div>` : ""}
+    ${/* Shake-out as one line in the header rather than a fifth step.
+
+         The four steps are what the drive crew answers on every pile, and the sheet they sit in
+         is capped at a third of the screen — a fifth question would cost the crew a tap four
+         hundred times a day for something that is usually already true by the time the rig
+         arrives. As a header line it is visible and one tap from every step, and it reads back
+         its own state, so somebody standing at a pile can see whether the material is down
+         without leaving the question they are on. The bulk action over a whole row is still
+         there for the crew actually laying it out. */ ""}
+    ${(canInstall() && n < 4) ? `<button class="wklink shkline" id="stShk">${o.sk
+      ? "\u2713 Shaken out \u00b7 tap to undo" : "Mark shaken out"}</button>` : ""}
   </div>`;
 }
 
@@ -5755,7 +6092,7 @@ function openPileSteps(k) {
   const n = clamp(pileStep, 1, 4);
   const go = s => { pileStep = s; openPileSteps(k); };
   const titles = { 1: "Is it in?", 2: "Anything wrong with it?", 3: "Anything to note?", 4: "Recorded" };
-  openPanel("Pile " + p.id + " · " + n + " of 4", n === 3 ? "notes" : true);
+  openPanel(pileTitle(p) + " · " + n + " of 4", n === 3 ? "notes" : true);
 
   let body = stepHead(p, k, n);
   if (n === 1) {
@@ -5808,13 +6145,14 @@ function openPileSteps(k) {
           ? "" : ` Stamped <b>${esc(stampLine())}</b>.`}</p>`
         : `<p class="hint" style="margin:0">Nothing beside this pile to move on to. Tap another on the map.</p>`}
       ${open ? `<button class="btn pri wide" id="s4open" style="width:100%;height:52px;margin-top:10px">
-        Nearest pile not recorded ▸ ${esc(open.id)}
+        Nearest pile not recorded ▸ ${esc(unnumbered(open) ? (SYMBOLS[open.sym] || SYMBOLS.array).label : open.id)}
         <span style="font-weight:400;opacity:.85">· ${ftOf(gapM(p, open))}</span></button>` : ""}`;
   }
   $("#panelBody").innerHTML = body;
   $("#panelBody").scrollTop = 0;
 
   $("#stAll").onclick = () => { pileStepAll = true; openPile(k); };
+  if ($("#stShk")) $("#stShk").onclick = () => { setPile(k, { sk: (S.ov[k] || {}).sk ? 0 : 1 }); openPileSteps(k); };
   if (n === 1) {
     /* recorded, then straight on — a pile that is not in has nothing to remediate, so that
        answer skips the second question rather than asking something meaningless */
@@ -5886,10 +6224,11 @@ function openPile(k) {
   const skip = new RegExp("^(" + [kN, kE, findKey(p.ex, ID_KEYS), findKey(p.ex, SIZE_KEYS),
   findKey(p.ex, ELEV_KEYS), findKey(p.ex, SYMBOL_KEYS), findKey(p.ex, SUBTYPE_KEYS)]
     .filter(Boolean).map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")$", "i");
-  const extras = Object.keys(p.ex || {}).filter(x => !/^__/.test(x) && String(p.ex[x]).trim() !== ""
+  const noNum = unnumbered(p);
+  const extras = noNum ? [] : Object.keys(p.ex || {}).filter(x => !/^__/.test(x) && String(p.ex[x]).trim() !== ""
     && !(skip.source !== "^()$" && skip.test(x)) && !LAT_KEYS.test(x) && !LON_KEYS.test(x));
   const st = statusOf(k);
-  openPanel("Pile " + p.id);
+  openPanel(pileTitle(p));
   $("#panelBody").innerHTML = `
     ${(isPhone() && pileStepAll && !S.walk.on) ? `<button class="wklink" id="stepBack"
       style="display:block;margin:0 0 6px;padding:8px 0">‹ Back to one question at a time</button>` : ""}
@@ -5899,15 +6238,21 @@ function openPile(k) {
       <div style="flex:1"><b style="font-family:var(--font-sub);font-size:15px">${esc(p.type)}</b>
       <div style="font-size:11px;color:var(--bm-steel)">${ST[st].label}</div></div>
     </div>
-    <div class="readrow"><span>Point ID</span><b>${esc(p.id)}</b></div>
+    ${noNum ? "" : `<div class="readrow"><span>Point ID</span><b>${esc(p.id)}</b></div>`}
     <div class="readrow"><span>Pile type</span><b>${symSVG(p.sym || "array", "#00263A", 16)}
-      ${esc((SYMBOLS[p.sym] || SYMBOLS.array).label)}${p.sub ? " · " + esc(p.sub) : ""}</b></div>
-    ${p.size ? `<div class="readrow"><span>Size</span><b>${esc(p.size)}</b></div>` : ""}
+      ${esc((SYMBOLS[p.sym] || SYMBOLS.array).label)}${p.sub && !noNum ? " · " + esc(p.sub) : ""}</b></div>
+    ${p.size && !noNum ? `<div class="readrow"><span>Size</span><b>${esc(p.size)}</b></div>` : ""}
     <div class="readrow"><span>Block / Area</span><b>${esc(p.block || "not set")}</b></div>
     ${(() => {
       /* Everything the survey gave us, folded away: needed now and then, in the way every
-         time. Closed on a phone, open where there is room for it. */
-      const rows = [
+         time. Closed on a phone, open where there is room for it.
+
+         A motor unit gets northing and easting and nothing else — see UNNUMBERED. It has no
+         elevation and no ID, and a lat/lon it would only ever be asked for in state plane. */
+      const rows = noNum ? [
+        kN ? ["Northing", p.ex[kN]] : null,
+        kE ? ["Easting", p.ex[kE]] : null
+      ].filter(Boolean) : [
         p.elev ? ["Top of pile elev", p.elev] : null,
         kN ? ["Northing", p.ex[kN]] : null,
         kE ? ["Easting", p.ex[kE]] : null,
@@ -5915,8 +6260,10 @@ function openPile(k) {
         ...extras.map(x => [x, p.ex[x]])
       ].filter(Boolean);
       if (!rows.length) return "";
-      return `<details class="fold"${isPhone() ? "" : " open"}>
-        <summary>Survey detail<span class="ct">${rows.length} field${rows.length === 1 ? "" : "s"}</span></summary>
+      /* Two rows are not worth hiding behind a tap, and for a motor unit the coordinates are
+         the whole identity — so its fold starts open even on a phone. */
+      return `<details class="fold"${(isPhone() && !noNum) ? "" : " open"}>
+        <summary>${noNum ? "Coordinates" : "Survey detail"}<span class="ct">${rows.length} field${rows.length === 1 ? "" : "s"}</span></summary>
         <div class="foldbody">${rows.map(([a, b]) =>
         `<div class="readrow"><span>${esc(a)}</span><b>${esc(b)}</b></div>`).join("")}</div></details>`;
     })()}
@@ -5940,6 +6287,27 @@ function openPile(k) {
     })()}
 
     <div class="divider"></div>
+    ${/* Shake-out comes before driving on the ground, so it comes before Installation here.
+
+        It had only ever been a bulk action — select a row, mark the row — which is right for
+        the crew laying material out, and wrong for anyone standing at one pile wondering
+        whether this one is ready. Both were asked for; this is the second.
+
+        Green is "shaken out" and it does NOT mean installed. The two are separate halves of
+        the record on purpose: a pile can be shaken out and not yet driven, and the merge keeps
+        them apart so a shake-out crew marking a row at 5pm cannot un-install what the drive
+        rig did that morning. */ ""}
+    ${canInstall() ? `
+    <div class="section-title">Shake-out</div>
+    <div class="big" style="grid-template-columns:1fr 1fr">
+      <button class="bigbtn ${o.sk ? "gsel" : ""}" id="bShk">Shaken out</button>
+      <button class="bigbtn ${o.tsS && !o.sk ? "rsel" : ""}" id="bNShk">Not shaken out</button>
+    </div>
+    <p class="hint" style="margin:0 0 2px">The step before driving, recorded separately &mdash;
+      this does not mark the pile installed.</p>` : `
+    <div class="readrow"><span>Shake-out</span><b>${o.sk ? "Shaken out" : o.tsS ? "Not shaken out" : "not recorded"}
+      ${o.dayS ? '<span style="color:var(--bm-steel);font-weight:400"> · ' + esc(o.dayS) + "</span>" : ""}</b></div>`}
+
     ${canInstall() ? `
     <div class="section-title">Installation</div>
     <div class="big">
@@ -5962,15 +6330,7 @@ function openPile(k) {
     <div class="readrow"><span>Remediation</span><b>${o.rm ? esc(o.rt || "flagged") + (o.rf ? " · complete" : " · open") : o.tsR ? "no issues" : "not inspected"}
       ${o.dayR ? '<span style="color:var(--bm-steel);font-weight:400"> · ' + esc(o.dayR) + "</span>" : ""}</b></div>`}
 
-    <!-- Read-only on a single pile on purpose: shake-out is recorded by dragging round a row,
-         because that is how the work is done. Shown here so a crew standing at one pile can
-         still see whether it was logged, and by whom. -->
-    <div class="readrow"><span>Shake-out</span><b>${o.tsS ? (o.sk ? "Shaken out" : "Recorded not shaken out") : "not recorded"}
-      ${o.dayS ? '<span style="color:var(--bm-steel);font-weight:400"> · ' + esc(o.dayS) + "</span>" : ""}</b></div>
-
     <div class="field"><label>Notes</label><textarea id="fNt" placeholder="Anything the next crew needs to know…">${esc(o.nt || "")}</textarea></div>
-    ${o.tsS ? `<div class="readrow"><span>Shaken out by</span><b>${esc(o.byS || o.cr || "not recorded")}
-      <span style="color:var(--bm-steel);font-weight:400"><br>${fmtDate(o.tsS)}</span></b></div>` : ""}
     ${o.tsI ? `<div class="readrow"><span>Installed by</span><b>${[o.cr, o.dr, o.byI].filter(Boolean).map(esc).join(" · ") || "not recorded"}
       <span style="color:var(--bm-steel);font-weight:400"><br>${fmtDate(o.tsI)}</span></b></div>` : ""}
     ${o.tsR ? `<div class="readrow"><span>Remediation by</span><b>${esc(o.byR || o.cr || "not recorded")}
@@ -5985,6 +6345,8 @@ function openPile(k) {
     openPile(k);
   };
   if (canInstall()) {
+    $("#bShk").onclick = () => { setPile(k, { sk: 1 }); redraw(); };
+    $("#bNShk").onclick = () => { setPile(k, { sk: 0 }); redraw(); };
     $("#bInst").onclick = () => { setPile(k, { st: 1 }); redraw(); };
     $("#bNot").onclick = () => { setPile(k, { st: 0 }); redraw(); };
   }
@@ -6027,8 +6389,8 @@ function openPile(k) {
       (q === "in" ? "Installed" : q === "ok" ? "No issues" : "Save") + " & next ▸");
     wn.onclick = () => {
       saveText();
-      if (q === "in") toast("Pile " + p.id + " installed");
-      else if (q === "ok") toast("Pile " + p.id + ", no issues");
+      if (q === "in") toast(pileTitle(p) + " installed");
+      else if (q === "ok") toast(pileTitle(p) + ", no issues");
       walkAdvance(k, q);
     };
     $("#panelFoot").append(wb, ws, wn);
@@ -6043,8 +6405,8 @@ function openPile(k) {
   const b2 = el("button", "btn pri wide", canInstall() ? "Installed & close" : "No issues & close");
   b2.onclick = () => {
     saveText();
-    if (canInstall()) { setPile(k, { st: 1 }); toast("Pile " + p.id + " marked installed"); }
-    else { setPile(k, { rm: 0, rf: 0, rt: "" }); toast("Pile " + p.id + ", no issues"); }
+    if (canInstall()) { setPile(k, { st: 1 }); toast(pileTitle(p) + " marked installed"); }
+    else { setPile(k, { rm: 0, rf: 0, rt: "" }); toast(pileTitle(p) + ", no issues"); }
     closePanel(); S.cur = null; requestDraw();
   };
   const inSel = S.sel.has(k);
@@ -6312,7 +6674,7 @@ function openPunch() {
     <div class="section-title">Open items${punchFilter ? " · " + esc(punchFilter) : ""}</div>
     ${shown.length ? shown.map(x => `<div class="lgrow" data-go="${esc(x.p.k)}">
         <span class="swatch" style="background:${REM_COLOR[x.t] || REM_FALLBACK}"></span>
-        <div class="nm"><b>${esc(x.p.id)}</b> <span style="color:var(--bm-steel);font-size:11px">${esc(x.p.block)}</span>
+        <div class="nm"><b>${esc(pileLabel(x.p))}</b> <span style="color:var(--bm-steel);font-size:11px">${esc(x.p.block)}</span>
           ${x.o.nt ? `<br><span style="font-size:11px;color:var(--bm-steel)">${esc(x.o.nt.split("\n")[0].slice(0, 60))}</span>` : ""}</div>
         <div class="ct">${esc(x.t)} ▸</div></div>`).join("")
       : '<p class="hint">No open items. Nice.</p>'}
@@ -6618,15 +6980,6 @@ function openBlockSummary(ring) {
     </div>
     <div class="home-bar" style="margin:10px 0 4px"><i style="width:${pct}%"></i></div>
     <div style="font-size:11px;color:var(--bm-steel);text-align:center">${pct}% of this block is in</div>
-
-    <div class="divider"></div>
-    <div class="section-title">Shake-out</div>
-    <div class="readrow"><span><span class="swatch" style="background:#6BA43A;width:11px;height:11px"></span>
-      Shaken out</span><b>${s.shaken.toLocaleString()}</b></div>
-    <div class="readrow"><span><span class="swatch" style="background:#A5BAC9;width:11px;height:11px"></span>
-      Not shaken out</span><b>${(s.total - s.shaken).toLocaleString()}</b></div>
-    <div class="home-bar" style="margin:6px 0 4px"><i style="width:${s.total ? Math.round(s.shaken / s.total * 100) : 0}%"></i></div>
-    <div style="font-size:11px;color:var(--bm-steel);text-align:center">${s.total ? Math.round(s.shaken / s.total * 100) : 0}% of this block is shaken out</div>
 
     <div class="divider"></div>
     <div class="section-title">Installation</div>
@@ -7231,8 +7584,12 @@ function openLayers() {
           <button class="lyx" id="lyRmEmpty">Remove</button></div>` : "";
     })()}
     ${(S.blockRings && S.blockRings.length) ? `<div class="section-title">Block names</div>
-      ${layerRow("bn", "1", "Block numbers on the map", null, S.showBlockNames, "",
-        S.blockRings.filter(b => b.name).length + " of " + S.blockRings.length + " outlines named")}
+      ${layerRow("bn", "1", "Names on the map", null, S.showBlockNames, "",
+        S.regionOf.size
+          ? "Regions zoomed out, block numbers zoomed in \u2014 " + regionGroups().size
+            + " region" + (regionGroups().size === 1 ? "" : "s") + ", "
+            + S.blockRings.filter(b => b.name).length + " of " + S.blockRings.length + " outlines named"
+          : S.blockRings.filter(b => b.name).length + " of " + S.blockRings.length + " outlines named")}
       <div class="lgrow" id="lySetup"><div class="nm"><b>Label the blocks</b><br>
         <span style="font-size:11px;color:var(--bm-steel)">Tap each outline on the map and give it its number</span></div>
       <div class="ct">▸</div></div>` : ""}
@@ -7472,7 +7829,9 @@ function openLegend() {
     ${dl ? `<div class="section-title">Design layers</div>${dl}` : ""}
     ${(S.blockRings && S.blockRings.length) ? `<div class="section-title">From the CAD drawing</div>
       <div class="lgrow" id="bnToggle"><div class="chk ${S.showBlockNames ? "on" : ""}">${S.showBlockNames ? "✓" : ""}</div>
-        <div class="nm">Block names on the map</div><div class="ct">${S.blockRings.filter(b => b.name).length} of ${S.blockRings.length} named</div></div>
+        <div class="nm">Names on the map<br><span style="font-size:11px;color:var(--bm-steel)">${S.regionOf.size
+          ? "Regions zoomed out, block numbers zoomed in" : "Block numbers"}</span></div>
+        <div class="ct">${S.blockRings.filter(b => b.name).length} of ${S.blockRings.length} named</div></div>
       <div class="lgrow" id="bnSetup"><div class="nm"><b>Label the blocks</b><br>
         <span style="font-size:11px;color:var(--bm-steel)">Walk through each outline and give it its number</span></div>
         <div class="ct">▸</div></div>` : ""}
@@ -7542,36 +7901,14 @@ function openMore() {
   const pending = Object.keys(S.ov).filter(k => S.ov[k] && S.ov[k].ts).length;
   const hidden = S.piles.length - S.piles.filter(p => passFilt(p)).length;
   const off = [...S.pLayers.values()].filter(o => !o.on).length + [...S.dLayers.values()].filter(o => !o.on).length;
-  /* In crew mode the menu is six rows: filters, the shake-out view, fit the site on screen,
-     the day's export, the crew name and help. Layers, block labelling, the legend, the punch
-     list, the progress dashboard and project data all belong to the coordinator and are simply
-     absent. Shake-out is here rather than only in the Legend because the Legend is one of the
-     things that is absent, and a control a crew cannot reach is a control that does not exist. */
+  /* In crew mode the menu is four rows: fit the site on screen, the day's export, the crew
+     name and help. Filters, layers, block labelling, the legend, the punch list, the progress
+     dashboard and project data all belong to the coordinator and are simply absent. */
   const has = !!S.proj && !crewMode();
   $("#panelBody").innerHTML = `
     ${crewMode() && S.proj ? menuRow("mFilter", "filter", "Filters",
       hidden ? hidden.toLocaleString() + " piles hidden right now" : "Show only flagged piles, or only ones with a note",
       hidden ? "on" : "", !!hidden) : ""}
-    ${S.proj ? (() => {
-      /* The shake-out view has to be reachable from HERE, not only from the Legend.
-
-         It went into the Legend first, which was wrong for the build that needs it most:
-         body.crew hides #btnLegend outright, so on the hosted crew page the switch and its
-         counts did not exist at all — a crew could mark a row shaken out with Select and then
-         had no way to see it on the map or read a number back. Menu is never hidden in crew
-         mode, because it is the only route to the crew name and to help, so it is the one place
-         a crew-facing control can safely live.
-
-         Kept for the coordinator too rather than made crew-only: two ways in beats a control
-         that moves depending on which build you opened. */
-      const on = S.colorBy === "shake";
-      return menuRow("mShake", "layers", on ? "Showing shake-out" : "Show shake-out on the map",
-        on ? "Green is shaken out, grey is not. Tap to go back to " + (lastColorBy === "status"
-          ? "install status" : "pile spec")
-          : t.shaken.toLocaleString() + " of " + t.tot.toLocaleString() + " shaken out · "
-          + Math.round(t.shakePct * 100) + "%",
-        on ? "on" : Math.round(t.shakePct * 100) + "%", on);
-    })() : ""}
     ${crewMode() && S.proj ? menuRow("mFit", "fit", "Zoom to all piles", "Fit the whole site on screen") : ""}
     ${crewMode() ? menuRow("mSync", "sync", "Export the day",
       pending ? "Records on this device to send in" : "Nothing recorded on this device yet",
@@ -7633,17 +7970,6 @@ function openMore() {
   go("#mData", () => gate("project", "Loading or changing project files", openImport), true); go("#mCrew", openCrew, true); go("#mHelp", openHelp, true);
   go("#mPack", pickPack, true);
   go("#mFit", () => { if (S.proj) fitBounds(S.proj.bounds, 40); }, true);
-  /* Toggles rather than being a one-way trip, and it returns you to whichever view you were in
-     rather than always to pile spec — a coordinator working in the status view who checks
-     shake-out wants their status view back, not a third state to fix by hand. */
-  go("#mShake", () => {
-    if (S.colorBy === "shake") { S.colorBy = lastColorBy || "type"; }
-    else { lastColorBy = S.colorBy; S.colorBy = "shake"; }
-    saveSettings(); requestDraw(); openMore();
-    toast(S.colorBy === "shake"
-      ? "Showing shake-out — green is shaken out, grey is not"
-      : S.colorBy === "status" ? "Back to install status" : "Back to pile spec", 3200);
-  });
   $("#panelFoot").innerHTML = "";
   const b = el("button", "btn blue wide", "Close");
   b.onclick = closePanel;
@@ -8268,7 +8594,7 @@ function exportGuestPack() {
   if (!S.proj) return toast("Load a project first");
   const j = packFile();
   const recs = Object.keys(j.ov).filter(k => j.ov[k] && j.ov[k].ts).length;
-  const nm = `${dayStamp(new Date())}_${slug(S.proj.name)}_CREW-PACK.pilepack.json`;
+  const nm = exportName("Crew Pack", ".pilepack.json");
   saveOrShare(nm, new Blob([JSON.stringify(j)], { type: "application/json" }));
   toast(S.piles.length.toLocaleString() + " piles · " + recs.toLocaleString()
     + " records · opens as Guest on any tablet", 4200);
@@ -8648,7 +8974,7 @@ function openCombine() {
   save.disabled = !ok;
   save.onclick = () => {
     const csv = buildMasterCsv(cmbFiles, { uniqueIds: cmbUnique, keepFar: cmbKeepFar });
-    const nm = `${dayStamp(new Date())}_MASTER-pile-points.csv`;
+    const nm = exportName("Master Pile Points", ".csv");
     saveOrShare(nm, new Blob([csv], { type: "text/csv" }));
     const i2 = combineIssues(cmbFiles);
     toast(i2.total.toLocaleString() + " piles from " + cmbFiles.length + " files"
@@ -8719,22 +9045,27 @@ const canBulkRemed = () => !crewMode();
 const HQ_MARK = '<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="19" stroke-linecap="round" stroke-linejoin="round"> <path d="M312 104 h84 v104 h-84 z"/> <path d="M330 208 h48 v190 h-48 z"/> <line x1="354" y1="410" x2="354" y2="476" stroke-width="27"/> <path d="M96 214 h150"/> <path d="M116 214 v128"/> <path d="M226 214 v128"/> <path d="M150 342 v-46 h44"/> <path d="M86 342 h214 v54 h-214 z"/> <path d="M300 318 h30"/> <path d="M70 402 h206 a26 26 0 0 1 0 52 h-206 a26 26 0 0 1 0 -52 z"/> <circle cx="112" cy="428" r="14"/> <circle cx="173" cy="428" r="14"/> <circle cx="234" cy="428" r="14"/> <line x1="40" y1="474" x2="472" y2="474" stroke-width="17"/> </g></svg>';
 const hqLockup = (cls) => `<span class="hq${cls ? " " + cls : ""}">${HQ_MARK}<b>Pile<i>HQ</i></b></span>`;
 
+/* What the hosted, non-baked page calls itself.
+
+   It used to be "Crew", which named the audience rather than the thing — and a coordinator
+   opening the same address got a page announcing itself as Crew. "Mobile" names what it is: the
+   app at a web address, no project sealed inside, added to a home screen and fed a pack. The
+   baked files still name their site and their role, because there the project *is* the
+   identity.
+
+   One constant, because this string has to appear in four places that a phone reads
+   separately: the tab, the header, the iOS home-screen meta tag and the web manifest. Android
+   takes the label from the manifest and iOS from the meta tag, so if those two ever disagree
+   the same app has two different names on two platforms — hosting.cjs fails if they do. */
+const MOBILE_NAME = "PileHQ Mobile";
+
 function buildName() {
   const j = readBaked();
-  if (j && j.crewMode) return "PileHQ · Crew";
+  if (j && j.crewMode) return MOBILE_NAME;
   if (j && j.piles && j.piles.length) {
     const who = j.lockRole === "guest" ? "Crew" : "Coordinator";
     return "PileHQ · " + (j.site || (j.proj && j.proj.name) || "project") + " · " + who;
   }
-  /* The hosted OFFICE page: a coordinator role and no project, the mirror of the crew page.
-     It exists because the emailed coordinator file cannot work on a phone at all — iOS previews
-     a downloaded .html without running any JavaScript, so the whole app is inert and there is
-     nothing a revision of that file can do about it. A page at an address runs, and gets real
-     storage into the bargain.
-
-     It has to name itself like every other build. Without this it read plain "PileHQ", which is
-     the one string DEPLOY.md tells you means "the wrong file is in the repo". */
-  if (j && j.lockRole && j.lockRole !== "guest") return "PileHQ · Office";
   return "PileHQ";
 }
 
@@ -8866,7 +9197,7 @@ async function exportCrewPage() {
       app copying its own file, and a page opened straight off a disk is not allowed to read itself.
       Open the tracker at its web address and do this from there.</p>`,
       [{ t: "Close", cls: "btn pri", fn: closeModal }]);
-  showBusy("Building the crew page", "Copying the app and sealing crew mode into it…");
+  showBusy("Building " + MOBILE_NAME, "Copying the app and sealing crew mode into it…");
   try {
     const src = await (await fetch(location.href, { cache: "reload" })).text();
     const j = { fmt: "bm-pile-pack", v: 1, app: APP_VER, at: nowTs(), lockRole: "guest", crewMode: true, piles: [] };
@@ -8883,12 +9214,12 @@ async function exportCrewPage() {
     const cut = baked.indexOf("</head>");
     if (cut < 0) { closeModal(); return toast("Could not read the page head"); }
     const head = baked.slice(0, cut)
-      .replace(/(name="apple-mobile-web-app-title" content=")[^"]*/, "$1PileHQ Crew")
-      .replace(/(name="application-name" content=")[^"]*/, "$1PileHQ Crew");
+      .replace(/(name="apple-mobile-web-app-title" content=")[^"]*/, "$1" + MOBILE_NAME)
+      .replace(/(name="application-name" content=")[^"]*/, "$1" + MOBILE_NAME);
     const out = head + baked.slice(cut);
     saveOrShare("index.html", new Blob([out], { type: "text/html" }));
     closeModal();
-    modal("Crew page built", `
+    modal(MOBILE_NAME + " built", `
       <div class="readrow" style="border-top:0"><span>Opens as</span><b>Guest, sealed</b></div>
       <div class="readrow"><span>Project inside it</span><b>none, arrives as a pack</b></div>
       <div class="readrow"><span>File size</span><b>${Math.round(out.length / 1024).toLocaleString()} KB</b></div>
@@ -9929,6 +10260,39 @@ async function saveOrShare(fname, blob) {
 }
 const slug = s => String(s || "project").replace(/[^\w.-]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 
+/* ---------------- what a file the app hands out is called ----------------
+
+   One rule for every export, so it can be said down a phone: **the date, the site, the crew if
+   the file belongs to one, then plain words for what it is.** "Look for today's date and the
+   words Crew Pack." Names used to read `2026-09-04_silver-creek_CREW-PACK.pilepack.json` —
+   underscores, a slug and shouting. Easy for a script, hard to read out loud in a trailer, and
+   every export had invented its own spelling of the same idea.
+
+   The site name stays in the middle on purpose. Two sites run out of this app, and two packs
+   exported on one day would otherwise be the same filename, leaving a crew choosing between
+   "Crew Pack.pilepack.json" and "Crew Pack (1).pilepack.json". The date stays first, so a
+   folder still sorts by day, which is how a coordinator finds last Tuesday's.
+
+   The extension is deliberately not part of this. `.pilepack.json` and `.pilesync.json` are
+   what the importer matches on and what the crew help tells people to look for — renaming
+   those would break the one thing about a filename that the app itself reads. */
+const FNAME_BAD = /[\\/:*?"<>|]/g;
+function fnamePart(v) {
+  /* Windows and iOS both refuse some of these, and a name ending in a space or a dot is
+     silently mangled rather than refused — so each part is cleaned on its own. */
+  return String(v == null ? "" : v).replace(FNAME_BAD, " ")
+    .replace(/[\s.]+$/, "").replace(/\s+/g, " ").trim().slice(0, 40);
+}
+function exportName(what, ext, who) {
+  const parts = [dayStamp(new Date())];
+  const site = fnamePart(S.proj && S.proj.name);
+  if (site) parts.push(site);
+  const crew = fnamePart(who);
+  if (crew) parts.push(crew);
+  parts.push(what);
+  return parts.filter(Boolean).join(" ") + ext;
+}
+
 function crewFile() {
   const recs = {};
   for (const k in S.ov) { const o = S.ov[k]; if (o && o.ts) recs[k] = o; }
@@ -9943,7 +10307,7 @@ function exportDay() {
   const j = crewFile();
   const n = Object.keys(j.records).length;
   if (!n) return toast("No field records on this device yet");
-  const nm = `${dayStamp(new Date())}_${slug(S.dev.crew || S.dev.name || "crew")}_${slug(S.proj.name)}.pilesync.json`;
+  const nm = exportName("My Day", ".pilesync.json", S.dev.crew || S.dev.name || "Crew");
   saveOrShare(nm, new Blob([JSON.stringify(j)], { type: "application/json" }));
   toast(n.toLocaleString() + " records exported");
 }
@@ -9953,7 +10317,7 @@ function exportMorning() {
   const j = crewFile();
   j.kind = "morning";
   j.dev = { id: "master", name: "Master tracker", crew: S.dev.crew || "" };
-  const nm = `${dayStamp(new Date())}_${slug(S.proj.name)}_MORNING-UPDATE.pilesync.json`;
+  const nm = exportName("Morning Update", ".pilesync.json");
   saveOrShare(nm, new Blob([JSON.stringify(j)], { type: "application/json" }));
   toast(Object.keys(j.records).length.toLocaleString() + " records. Send this to every tablet");
 }
@@ -9970,7 +10334,7 @@ function exportBackup() {
     blockRings: S.blockRings || [],
     regions: serialRegions()
   };
-  saveOrShare(`${dayStamp(new Date())}_${slug(S.proj.name)}_FULL-BACKUP.json`,
+  saveOrShare(exportName("Full Backup", ".json"),
     new Blob([JSON.stringify(j)], { type: "application/json" }));
   toast("Full backup saved");
 }
@@ -10308,7 +10672,7 @@ async function importSync(files) {
 function showMergeReport(s) {
   const rows = s.conflicts.slice(0, 60).map(c => {
     const p = pileOf(c.k);
-    return `<tr><td>${esc(p ? p.id : c.k)}</td><td>${esc(c.kept)}</td>
+    return `<tr><td>${esc(p ? pileLabel(p) : c.k)}</td><td>${esc(c.kept)}</td>
       <td>${c.keptRec.st ? "In" : "Not in"}${c.keptRec.rm ? " · Rem" : ""}</td>
       <td>${c.lostRec.st ? "In" : "Not in"}${c.lostRec.rm ? " · Rem" : ""}</td></tr>`;
   }).join("");
@@ -10364,8 +10728,9 @@ function exportCSV(remOnly) {
     const st = statusOf(p.k);
     if (remOnly && st !== "rem") continue;
     n++;
-    lines.push([p.id, p.block, (SYMBOLS[p.sym] || SYMBOLS.array).label, p.sub || "",
-      p.type, p.size || "", p.lat.toFixed(8), p.lon.toFixed(8),
+    const noNum = unnumbered(p);
+    lines.push([noNum ? "" : p.id, p.block, (SYMBOLS[p.sym] || SYMBOLS.array).label, noNum ? "" : (p.sub || ""),
+      p.type, noNum ? "" : (p.size || ""), p.lat.toFixed(8), p.lon.toFixed(8),
     ...ex.map(k => (p.ex || {})[k] == null ? "" : p.ex[k]),
       ST[st].csv,
       o.tsI || o.st ? (o.st ? "YES" : "NO") : "", o.day || "", o.dr || "",
@@ -10374,7 +10739,8 @@ function exportCSV(remOnly) {
       o.nt || "", o.cr || "", o.byName || o.by || "",
       o.ts ? new Date(o.ts).toISOString() : "", p.k].map(csvCell).join(","));
   }
-  const nm = `${dayStamp(new Date())}_${slug(S.dev.crew || S.dev.name || "crew")}_${slug(S.proj.name)}_${remOnly ? "REMEDIATION" : "PILE-STATUS"}.csv`;
+  const nm = exportName(remOnly ? "Remediation" : "Pile Status", ".csv",
+    S.dev.crew || S.dev.name || "Crew");
   saveOrShare(nm, new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv" }));
   toast(n.toLocaleString() + " rows exported");
 }
@@ -10501,10 +10867,10 @@ function buildRemediationLog() {
        is left blank rather than having a word invented for it */
     const type = o.rm ? (o.rt || "") : "";
     if (o.rm && !o.rt) noType++;
-    if (isInverterPile(p)) { inv.push([p.block || "", p.id, colourName(p), type]); continue; }
+    if (isInverterPile(p)) { inv.push([p.block || "", pileLabel(p), colourName(p), type]); continue; }
     const b = p.block || "Unassigned";
     if (!byBlock.has(b)) byBlock.set(b, []);
-    byBlock.get(b).push([p.id, colourName(p), type]);
+    byBlock.get(b).push([pileLabel(p), colourName(p), type]);
   }
   const used = new Set();
   const sheets = [];
@@ -10529,7 +10895,7 @@ function exportRemediationLog() {
   const { sheets, invCount, blockCount, noType } = buildRemediationLog();
   if (!sheets.length) return toast("No piles to export");
   const blob = buildXlsx(sheets);
-  const nm = `${dayStamp(new Date())}_${slug(S.proj.name)}_Pile Remediation Log by Block.xlsx`;
+  const nm = exportName("Remediation Log by Block", ".xlsx");
   saveOrShare(nm, blob);
   toast(blockCount + " block sheet" + (blockCount === 1 ? "" : "s")
     + (invCount ? " + inverter" : "") + " · " + t.remTot.toLocaleString() + " remediation entries"
@@ -10856,7 +11222,7 @@ async function openSync() {
       <p class="hint" style="margin:0 0 10px">One HTML file with this project and one role sealed inside it,
         nothing to import, no address, no passcode. For a trial: email the Crew file to the install crews and the
         Coordinator file to the project team. Whoever holds a file gets that role.</p>
-      <button class="btn" id="sCrewPage" style="width:100%;height:44px;font-size:12px;margin-bottom:10px">Build the hosted crew page</button>
+      <button class="btn" id="sCrewPage" style="width:100%;height:44px;font-size:12px;margin-bottom:10px">Build the hosted ${esc(MOBILE_NAME)} page</button>
       <p class="hint" style="margin:0 0 10px">The other way round: no project inside, sealed to the field tools only,
         meant to be published at a web address so the crews can add it to a home screen. One page serves every job.
         Emailed files cannot be added to a home screen, which is the only reason to host anything.</p>` : ""}
@@ -10934,7 +11300,7 @@ async function openSync() {
   $("#sPack").onclick = () => gate("packs", "Making a crew pack", exportGuestPack);
   if ($("#sStandC")) $("#sStandC").onclick = () => gate("project", "Building a standalone file", () => exportStandalone("coordinator"));
   if ($("#sStandG")) $("#sStandG").onclick = () => gate("project", "Building a standalone file", () => exportStandalone("guest"));
-  if ($("#sCrewPage")) $("#sCrewPage").onclick = () => gate("project", "Building the crew page", exportCrewPage);
+  if ($("#sCrewPage")) $("#sCrewPage").onclick = () => gate("project", "Building the " + MOBILE_NAME + " page", exportCrewPage);
   $("#sMorn").onclick = () => gate("packs", "Making a morning update", exportMorning);
   $("#sImp").onclick = () => gate("merge", "Merging crew files", () => pickFiles(fl => importSync([...fl])));
   $("#sXls").onclick = exportRemediationLog;
@@ -11056,7 +11422,7 @@ function updateGpsBar() {
   $("#gpsAcc").innerHTML = `<i class="${cls}"></i>±${a} m`;
   const n = S.piles.length ? nearestPile(S.gps.lat, S.gps.lon, false) : null;
   $("#gpsNear").innerHTML = n
-    ? `${esc(n.pile.id)} <small>${ftOf(n.m)} ${n.dir}${n.pile.block ? " · " + esc(n.pile.block) : ""}</small>`
+    ? `${esc(pileLabel(n.pile))} <small>${ftOf(n.m)} ${n.dir}${n.pile.block ? " · " + esc(n.pile.block) : ""}</small>`
     : `<small>${S.gps.lat.toFixed(6)}, ${S.gps.lon.toFixed(6)}</small>`;
   $("#gpsNear").onclick = () => { if (n) { centerOn(n.pile.lat, n.pile.lon, Math.max(zoomLevel(), 20)); openPile(n.pile.k); } };
   $("#gpsFollow").classList.toggle("on", gpsFollow);
@@ -11109,7 +11475,7 @@ function nearestToMe() {
   if (!n) return toast("No piles visible with the current filters");
   centerOn(n.pile.lat, n.pile.lon, Math.max(zoomLevel(), 20));
   openPile(n.pile.k);
-  toast("Nearest pile " + n.pile.id + " · " + ftOf(n.m) + " " + n.dir);
+  toast("Nearest · " + pileLabel(n.pile) + " · " + ftOf(n.m) + " " + n.dir);
 }
 $("#btnNear").onclick = nearestToMe;
 $("#btnGps").addEventListener("dblclick", e => { e.preventDefault(); nearestToMe(); });
@@ -11653,8 +12019,8 @@ function wrongFileHelp(name, what) {
     ${what ? `<div class="readrow"><span>Which looks like</span><b>${esc(what)}</b></div>` : ""}
     <p class="hint" style="margin:10px 0 0">Design files build a project from scratch, which is a
       job for the office. What you want is the pack your coordinator sends out, which has a name
-      ending <b>.pilepack.json</b> and usually starts with the date, like
-      <b>2026-08-25_silver-creek_CREW-PACK.pilepack.json</b>.<br><br>
+      ending <b>.pilepack.json</b> and starting with the date, like
+      <b>2026-09-04 Silver Creek Crew Pack.pilepack.json</b>.<br><br>
       If you have not been sent one, ask your coordinator for the crew pack. Nothing on this
       device has been changed.</p>`,
     [{ t: "Try another file", cls: "btn pri", fn: () => { closeModal(); pickPack(); } },
@@ -11771,10 +12137,8 @@ function renderHome() {
       ${S.proj.rev ? " · revision " + S.proj.rev : ""}</div>
     <div class="home-bar"><i style="width:${pct}%"></i></div>
     <div class="home-sub">${t.done.toLocaleString()} installed · ${t.open.toLocaleString()} to go</div>
-    <div class="home-sub">${t.shaken.toLocaleString()} shaken out · ${t.shakeLeft.toLocaleString()} not yet</div>
-    <div class="home-stats"${crew ? ` style="grid-template-columns:repeat(4,1fr)"` : ""}>
+    <div class="home-stats"${crew ? ` style="grid-template-columns:repeat(3,1fr)"` : ""}>
       <div class="home-stat accent"><b>${pct}%</b><span>Complete</span></div>
-      <div class="home-stat"><b>${Math.round(t.shakePct * 100)}%</b><span>Shaken out</span></div>
       <div class="home-stat"><b>${today ? today.in : 0}</b><span>Today</span></div>
       <div class="home-stat"><b>${t.remOpen.toLocaleString()}</b><span>Remediate</span></div>
       ${crew ? "" : `<div class="home-stat"><b>${Math.round(P.avg).toLocaleString()}</b><span>Avg / day</span></div>`}
